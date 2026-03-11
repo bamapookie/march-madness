@@ -13,7 +13,8 @@ Users compete in groups (competitions) where organizers configure scoring, resee
 Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round of 64 begins **~March 20**.
 Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can ship during the tournament.
 
-### 0.1.0 — Foundation *(prerequisite for everything)*
+### 0.1.0 — Foundation _(prerequisite for everything)_
+
 - Prisma schema — all tables, relations, indexes
 - Shared TypeScript types (`/types`)
 - Prisma client singleton (`src/lib/db.ts`)
@@ -23,44 +24,51 @@ Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can s
 - Base layout and navigation shell
 - Environment variable documentation (`.env.example`)
 
-### 0.2.0 — Ranking Lists *(core user action)*
+### 0.2.0 — Ranking Lists _(core user action)_
+
 - API routes — create, read, update ranking list and entries
 - Ranking list pre-population by average NCAA seed
 - Lock enforcement at the API layer (reject mutations after `lock_at`)
 - Ranking list UI — drag-to-reorder, save, view (`src/app/ranking`)
 
-### 0.3.0 — Core Domain Logic *(pure, testable, no DB)*
+### 0.3.0 — Core Domain Logic _(pure, testable, no DB)_
+
 - Bracket resolution — slot-based and reseed_by_ranking (`src/lib/bracket.ts`)
 - Scoring engine — round advancement, correct winner, seeding accuracy bonus (`src/lib/scoring.ts`)
 - Unit tests for both
 
-### 0.4.0 — ESPN Import & Season Setup *(data foundation)*
+### 0.4.0 — ESPN Import & Season Setup _(data foundation)_
+
 - ESPN API client — schools, bracket slots, scoreboard, tournament results (`src/lib/import.ts`)
 - Admin API route — manual import trigger (`src/app/api/admin/import/route.ts`)
 - Vercel Cron Job — scheduled polling (`src/app/api/cron/import-results/route.ts`, `vercel.json`)
 - Dev script — `npm run import:results` (`src/scripts/import-results.ts`)
 - Admin page — import status, stale data warnings, manual trigger (`src/app/admin`)
 
-### 0.5.0 — Competitions *(group play)*
+### 0.5.0 — Competitions _(group play)_
+
 - API routes — create competition, join, submit ranking list entry
 - Invite token generation and redemption
 - Competition creation form with full settings (scoring mode, lock mode, points, reseed mode)
 - Competition lobby — members, submitted entries, lock countdown (`src/app/competition`)
 - Dashboard — user's competitions and ranking lists (`src/app/dashboard`)
 
-### 0.6.0 — Bracket Viewer & Leaderboard *(scoring display)*
+### 0.6.0 — Bracket Viewer & Leaderboard _(scoring display)_
+
 - Resolved bracket viewer — Men's and Women's side by side (`src/app/bracket`)
 - Score computation triggered on each results import
 - Leaderboard with combined score, tiebreaker, and per-gender breakdown
 - Competition entry detail — user's bracket vs. actual results
 
 ### 0.7.0 — Notifications & Polish
+
 - In-app notifications — polled client-side, displayed in nav
 - Mobile-responsive layout pass
 - Loading states, error boundaries, empty states
 - Admin panel hardening — Railway DB status, last import timestamp
 
 ### 1.0.0 — Production Launch
+
 - Production deployment — Vercel + Railway
 - All environment variables configured in Vercel dashboard
 - Vercel Cron Job verified in production
@@ -183,7 +191,6 @@ notifications          — In-app notifications (polled client-side)
 **Scoring — correct winner:** Points for correctly predicting the winner of each specific game.
 
 **Seeding accuracy bonus:** Bonus points when a school exits the tournament in the exact round the user's resolved bracket predicted — including a separate bonus for correctly predicting the championship winner.
-
 
 **Tiebreaker:** When scores are tied, the user whose Men's and Women's bracket scores have the smaller absolute difference wins. Rewards balanced knowledge across both tournaments.
 

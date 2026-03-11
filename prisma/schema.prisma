@@ -1,0 +1,352 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─── Enums ───────────────────────────────────────────────────────────────────
+
+enum Gender {
+  MENS
+  WOMENS
+}
+
+enum Round {
+  FIRST_FOUR
+  ROUND_OF_64
+  ROUND_OF_32
+  SWEET_16
+  ELITE_8
+  FINAL_FOUR
+  CHAMPIONSHIP
+}
+
+// ─── Auth.js v5 Required Models ──────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+
+  accounts             Account[]
+  sessions             Session[]
+  rankingLists         RankingList[]
+  organizedCompetitions Competition[]       @relation("CompetitionOrganizer")
+  competitionMembers   CompetitionMember[]
+  competitionEntries   CompetitionEntry[]
+  notifications        Notification[]
+  createdInvitations   Invitation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ─── Tournament Season ───────────────────────────────────────────────────────
+
+model TournamentSeason {
+  id              String   @id @default(cuid())
+  name            String   @unique // e.g. "2026"
+  firstFourLockAt DateTime
+  roundOf64LockAt DateTime
+  isActive        Boolean  @default(false)
+
+  schools           School[]
+  bracketSlots      BracketSlot[]
+  rankingLists      RankingList[]
+  competitions      Competition[]
+  tournamentResults TournamentResult[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tournament_seasons")
+}
+
+// ─── Schools ─────────────────────────────────────────────────────────────────
+
+model School {
+  id                   String  @id @default(cuid())
+  seasonId             String
+  name                 String
+  shortName            String?
+  abbreviation         String?
+  isInMensTournament   Boolean @default(false)
+  isInWomensTournament Boolean @default(false)
+  mensSeed             Int? // 1–16; null if not in Men's tournament
+  womensSeed           Int? // 1–16; null if not in Women's tournament
+  mensRegion           String?
+  womensRegion         String?
+  mensEspnId           String?
+  womensEspnId         String?
+
+  season         TournamentSeason   @relation(fields: [seasonId], references: [id])
+  bracketSlots   BracketSlot[]
+  rankingEntries RankingEntry[]
+  winningResults TournamentResult[] @relation("WinningSchool")
+  losingResults  TournamentResult[] @relation("LosingSchool")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([seasonId, name])
+  @@index([seasonId])
+  @@map("schools")
+}
+
+// ─── Bracket Slots ───────────────────────────────────────────────────────────
+
+model BracketSlot {
+  id         String  @id @default(cuid())
+  seasonId   String
+  gender     Gender
+  round      Round
+  slotIndex  Int // 0-based position within this round+gender combination
+  region     String? // null for Final Four and Championship
+  seed       Int? // initial seed assigned to this slot (1–16, or 11/16 for First Four)
+  schoolId   String? // school initially seeded into this slot
+  nextSlotId String? // slot the winner advances into; null for Championship
+
+  season            TournamentSeason   @relation(fields: [seasonId], references: [id])
+  school            School?            @relation(fields: [schoolId], references: [id])
+  nextSlot          BracketSlot?       @relation("AdvancesTo", fields: [nextSlotId], references: [id])
+  feedingSlots      BracketSlot[]      @relation("AdvancesTo")
+  tournamentResults TournamentResult[]
+
+  @@unique([seasonId, gender, round, slotIndex])
+  @@index([seasonId, gender])
+  @@map("bracket_slots")
+}
+
+// ─── Ranking Lists ───────────────────────────────────────────────────────────
+
+model RankingList {
+  id       String @id @default(cuid())
+  seasonId String
+  userId   String
+  name     String
+
+  season             TournamentSeason @relation(fields: [seasonId], references: [id])
+  user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  entries            RankingEntry[]
+  competitionEntries CompetitionEntry[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, seasonId])
+  @@map("ranking_lists")
+}
+
+model RankingEntry {
+  id            String @id @default(cuid())
+  rankingListId String
+  schoolId      String
+  rank          Int // 1-based; rank 1 = highest-rated school
+
+  rankingList RankingList @relation(fields: [rankingListId], references: [id], onDelete: Cascade)
+  school      School      @relation(fields: [schoolId], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([rankingListId, schoolId])
+  @@unique([rankingListId, rank])
+  @@index([rankingListId])
+  @@map("ranking_entries")
+}
+
+// ─── Competitions ─────────────────────────────────────────────────────────────
+
+model Competition {
+  id           String  @id @default(cuid())
+  seasonId     String
+  organizerId  String
+  name         String
+  description  String?
+  settingsJson Json // CompetitionSettings shape defined in src/types/index.ts
+  isPublic     Boolean @default(false)
+
+  season      TournamentSeason    @relation(fields: [seasonId], references: [id])
+  organizer   User                @relation("CompetitionOrganizer", fields: [organizerId], references: [id])
+  members     CompetitionMember[]
+  entries     CompetitionEntry[]
+  invitations Invitation[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([seasonId])
+  @@index([organizerId])
+  @@map("competitions")
+}
+
+model CompetitionMember {
+  id            String @id @default(cuid())
+  competitionId String
+  userId        String
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([competitionId, userId])
+  @@map("competition_members")
+}
+
+model CompetitionEntry {
+  id            String @id @default(cuid())
+  competitionId String
+  userId        String
+  rankingListId String
+
+  competition     Competition      @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rankingList     RankingList      @relation(fields: [rankingListId], references: [id])
+  resolvedBracket ResolvedBracket?
+  score           EntryScore?
+
+  submittedAt DateTime @default(now())
+
+  @@unique([competitionId, rankingListId])
+  @@index([competitionId, userId])
+  @@map("competition_entries")
+}
+
+// ─── Tournament Results ───────────────────────────────────────────────────────
+
+model TournamentResult {
+  id              String   @id @default(cuid())
+  seasonId        String
+  bracketSlotId   String   @unique // one result per slot
+  winningSchoolId String
+  losingSchoolId  String
+  espnGameId      String   @unique
+  playedAt        DateTime
+  importedAt      DateTime @default(now())
+
+  season        TournamentSeason @relation(fields: [seasonId], references: [id])
+  bracketSlot   BracketSlot      @relation(fields: [bracketSlotId], references: [id])
+  winningSchool School           @relation("WinningSchool", fields: [winningSchoolId], references: [id])
+  losingSchool  School           @relation("LosingSchool", fields: [losingSchoolId], references: [id])
+
+  @@index([seasonId])
+  @@map("tournament_results")
+}
+
+// ─── Invitations ──────────────────────────────────────────────────────────────
+
+model Invitation {
+  id            String    @id @default(cuid())
+  competitionId String
+  createdById   String
+  token         String    @unique
+  maxUses       Int?
+  useCount      Int       @default(0)
+  expiresAt     DateTime?
+  createdAt     DateTime  @default(now())
+
+  competition Competition @relation(fields: [competitionId], references: [id], onDelete: Cascade)
+  createdBy   User        @relation(fields: [createdById], references: [id])
+
+  @@index([competitionId])
+  @@map("invitations")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id        String  @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  isRead    Boolean @default(false)
+  link      String? // optional deep-link into the app
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@map("notifications")
+}
+
+// ─── Score Cache ──────────────────────────────────────────────────────────────
+
+model ResolvedBracket {
+  id                 String   @id @default(cuid())
+  competitionEntryId String   @unique
+  mensJson           Json // resolved Men's bracket predictions
+  womensJson         Json // resolved Women's bracket predictions
+  resolvedAt         DateTime @default(now())
+
+  competitionEntry CompetitionEntry @relation(fields: [competitionEntryId], references: [id], onDelete: Cascade)
+
+  @@map("resolved_brackets")
+}
+
+model EntryScore {
+  id                 String   @id @default(cuid())
+  competitionEntryId String   @unique
+  mensScore          Int      @default(0)
+  womensScore        Int      @default(0)
+  totalScore         Int      @default(0)
+  tiebreaker         Int      @default(0) // abs(mensScore - womensScore); lower is better
+  computedAt         DateTime @default(now())
+
+  competitionEntry CompetitionEntry @relation(fields: [competitionEntryId], references: [id], onDelete: Cascade)
+
+  @@map("entry_scores")
+}

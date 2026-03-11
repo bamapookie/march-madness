@@ -47,3 +47,8 @@ serviceAccountKey.json
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# prisma generated client
+src/generated/
+
+/src/generated/prisma
