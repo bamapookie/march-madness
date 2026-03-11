@@ -105,17 +105,21 @@ Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can s
     /competition        # Competition lobby, leaderboard, create
     /admin              # Admin panel
   /components           # Shared React components
+  /generated
+    /prisma             # Auto-generated Prisma client (gitignored; rebuilt on deploy)
+      client.ts         # Main import: import { PrismaClient } from "@/generated/prisma/client"
   /lib
-    /db.ts              # Prisma client singleton
+    /db.ts              # Prisma client singleton (uses @prisma/adapter-pg driver adapter)
     /auth.ts            # Auth.js v5 config — exports { auth, signIn, signOut, handlers }
     /bracket.ts         # Bracket resolution logic
     /scoring.ts         # Scoring logic
     /import.ts          # ESPN API import logic (plain async fn, no scheduler)
   /middleware.ts        # Auth middleware — export { auth as middleware } from "@/lib/auth"
-  /prisma
-    schema.prisma       # Database schema
-    /migrations         # Prisma migration files
   /types                # Shared TypeScript types
+/prisma
+  schema.prisma         # Database schema (models + enums; no datasource URL)
+  /migrations           # Prisma migration files
+prisma.config.ts        # Prisma v7 config — datasource URL + migrations path
 ```
 
 ---
@@ -131,6 +135,7 @@ npx prisma migrate dev    # Run migrations in development
 npx prisma migrate deploy # Run migrations in production
 npx prisma studio         # Open Prisma DB browser
 npx prisma generate       # Regenerate Prisma client after schema changes
+                          # Note: also runs automatically via "prisma generate && next build"
 
 # Testing
 npm run test              # Run test suite
@@ -142,6 +147,11 @@ npm run format:check      # Prettier — check formatting (CI)
 # Results import (manual trigger for testing)
 npm run import:results
 ```
+
+> **Prisma v7 notes:** The schema has no `datasource url` — the connection string lives in
+> `prisma.config.ts` (used by CLI) and is passed at runtime via `@prisma/adapter-pg` in
+> `src/lib/db.ts`. The generated client is in `src/generated/prisma/` (gitignored) and is
+> rebuilt on every deploy via the `build` script.
 
 ---
 
