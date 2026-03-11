@@ -14,6 +14,7 @@ GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-bask
 ```
 
 **Query params:**
+
 - `dates=20260315` — filter by date (YYYYMMDD)
 - `groups=50` — NCAA Tournament group ID for Men's
 - `groups=49` — NCAA Tournament group ID for Women's
@@ -58,10 +59,10 @@ Returns full box score + play-by-play for a specific game. Probably overkill for
 
 Given your data model (`tournament_results`, `bracket_slots`), you need two things from ESPN:
 
-| Need | Endpoint |
-|---|---|
-| **Which teams are in which bracket slot** (at tournament start) | Tournaments bracket endpoint |
-| **Which team won each game, after it's played** | Scoreboard endpoint (polled every 5 min) |
+| Need                                                            | Endpoint                                 |
+| --------------------------------------------------------------- | ---------------------------------------- |
+| **Which teams are in which bracket slot** (at tournament start) | Tournaments bracket endpoint             |
+| **Which team won each game, after it's played**                 | Scoreboard endpoint (polled every 5 min) |
 
 ---
 
@@ -87,7 +88,7 @@ For `src/lib/import.ts`, the flow should be:
 2. Poll the **scoreboard endpoint** on your cron schedule → detect completed games → write to `tournament_results`
 3. After each write, trigger bracket score recomputation and leaderboard cache update
 
-The open question in your `CLAUDE.md` — *"Which ESPN API endpoint / key will be used?"* — is answered: **no key needed**, just the endpoints above.
+The open question in your `CLAUDE.md` — _"Which ESPN API endpoint / key will be used?"_ — is answered: **no key needed**, just the endpoints above.
 
 # Is there anything else we need to consider before generating code?
 
@@ -98,14 +99,18 @@ Good timing to do this review. Looking at the `package.json` and cross-referenci
 ## 🔴 Critical Issues
 
 ### 1. Vercel + `node-cron` are incompatible
+
 Vercel is **serverless** — there's no persistent process for `node-cron` to run in. Options:
+
 - **Vercel Cron Jobs** (recommended) — define cron schedules in `vercel.json`, which call an API route. Free tier allows daily; paid tiers allow up to every minute
 - **External worker** — a separate Railway or Render service running the cron
 
 This affects the architecture of `src/lib/import.ts` significantly. **Decision needed.**
 
 ### 2. No dependencies installed yet
+
 `package.json` only has Next.js and React. Before any code runs, you'll need to add:
+
 ```
 prisma, @prisma/client
 next-auth (v5 / Auth.js), @auth/prisma-adapter
@@ -114,6 +119,7 @@ node-cron + @types/node-cron (if not using Vercel Cron)
 ```
 
 ### 3. NextAuth version — v4 vs v5 (Auth.js)
+
 The API surface is completely different between the two. Given your Next.js 16 + React 19 stack, **Auth.js v5** is the right choice — but need to confirm, as the import paths (`next-auth/providers/google` vs `@auth/core/providers/google`) and config shape differ.
 
 ---
@@ -121,32 +127,42 @@ The API surface is completely different between the two. Given your Next.js 16 +
 ## 🟡 Design Gaps That Need Decisions
 
 ### 4. Selection Sunday is this Sunday (March 15, 2026)
+
 The bracket field won't be announced until Sunday. This means:
+
 - ESPN **tournament IDs** for 2026 aren't available yet
 - `bracket_slots` data can't be seeded until after Selection Sunday
 - You'll need a **manual admin trigger** (or the cron job) to do the initial bracket import — confirm this flow
 
 ### 5. School ranking list size — up to 136 teams
+
 Men's = 68 teams, Women's = 68 teams. A school **could** appear in both tournaments. Your design says they get **one slot** in the ranking. This raises:
+
 - How is the initial ranking list pre-populated for the user? Do they start from a blank list or a suggested order?
 - How does the UI handle 136 items in a drag-to-rank interface?
 
 ### 6. Seeding accuracy bonus is underspecified
+
 > "Bonus points when a school reaches the exact round the user's ranking predicted"
 
 How is "the round the ranking predicted" determined? Two interpretations:
+
 - **Interpretation A:** Based on the school's position in the user's ranking (e.g., if ranked #1–4 → predicted to reach championship)
-- **Interpretation B:** Based on where the bracket resolution *placed* that school (i.e., the round they were predicted to exit in the resolved bracket)
+- **Interpretation B:** Based on where the bracket resolution _placed_ that school (i.e., the round they were predicted to exit in the resolved bracket)
 
 These produce very different scoring logic. **Decision needed.**
 
 ### 7. `reseed_by_ranking` mode needs a clearer spec
-The CLAUDE.md says: *"redistribute surviving schools by original rank before resolving the next predicted round."* But the predicted bracket was already resolved once at lock time — do you:
+
+The CLAUDE.md says: _"redistribute surviving schools by original rank before resolving the next predicted round."_ But the predicted bracket was already resolved once at lock time — do you:
+
 - **Re-resolve the entire predicted bracket from scratch** each round using only surviving schools?
 - Or **only adjust the remaining rounds** of the already-resolved bracket?
 
 ### 8. First Four lock timing
+
 The First Four games start **before** the Round of 64. Does `lock_at` happen:
+
 - Before **First Four** (so users are locked in before any games are played)?
 - Before **Round of 64** (so users can see First Four results before locking)?
 
@@ -157,7 +173,7 @@ This affects enforcement logic in the API layer.
 ## 🟢 Minor Things Worth Confirming
 
 | Item                        | Question                                                                                                                         |
-|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | **Database host**           | Supabase or Railway? Affects connection string format and pooling config                                                         |
 | **Prisma schema**           | Not written yet — needs full field definitions, indexes, and constraints before any code                                         |
 | **`/types` directory**      | Empty — shared TypeScript types need to be defined first to avoid circular dependencies                                          |
@@ -193,6 +209,7 @@ Good decisions. Here's what those choices lock in architecturally, and what's st
 ## ✅ What These Decisions Settle
 
 ### Vercel Cron
+
 - Cron schedules live in **`vercel.json`**, not in application code
 - Each schedule calls a **protected API route** (e.g., `GET /api/cron/import-results`)
 - The route must be protected with a `CRON_SECRET` env var — Vercel injects an `Authorization` header on each call; the route validates it
@@ -201,6 +218,7 @@ Good decisions. Here's what those choices lock in architecturally, and what's st
 - **Execution time limit:** 60s on Hobby plan, 300s on Pro — the import function must complete within this
 
 ### Auth.js v5
+
 - Package is **`next-auth@5`** (beta/stable v5), adapter is **`@auth/prisma-adapter`**
 - Config lives in **`src/lib/auth.ts`** and exports `{ auth, signIn, signOut, handlers }`
 - Route handler is a single file at **`src/app/api/auth/[...nextauth]/route.ts`** that re-exports `handlers`
@@ -215,16 +233,21 @@ Good decisions. Here's what those choices lock in architecturally, and what's st
 These three still need answers before the scoring and bracket logic can be written:
 
 ### 1. Seeding accuracy bonus interpretation
+
 Which definition?
+
 - **A — Ranking-position-based:** A school's "predicted round" is determined by their rank position (e.g., rank 1–4 → predicted champion, 5–8 → predicted finalist, etc. based on how many teams are in the bracket)
-- **B — Bracket-resolution-based:** After the bracket is resolved at lock time, the round where the school is predicted to be *eliminated* is stored — that's their target round
+- **B — Bracket-resolution-based:** After the bracket is resolved at lock time, the round where the school is predicted to be _eliminated_ is stored — that's their target round
 
 ### 2. `reseed_by_ranking` mode
+
 After a round's real results come in, do you:
+
 - **A — Full re-resolution:** Take all surviving teams, re-sort by original rank, and re-fill the remaining bracket slots fresh (winners/losers change for future rounds)
 - **B — Partial adjustment:** Keep the already-resolved predicted bracket, but swap out eliminated teams' future slots with the actual survivor
 
 ### 3. First Four lock timing
+
 - **Before First Four** — users must submit before any games are played
 - **Before Round of 64** — users can wait to see First Four results, then lock in
 
@@ -232,10 +255,10 @@ After a round's real results come in, do you:
 
 ## ❓ Still Open (Non-Blocking But Should Confirm Soon)
 
-| Question | Why it matters |
-|---|---|
-| **Database host** — Supabase or Railway? | Connection string format + whether you need Prisma connection pooling (`?pgbouncer=true`) |
-| **Ranking list pre-population** — blank or seeded from NCAA seeds? | Determines if you need a "suggested order" import step |
-| **System-wide competition limit?** | Schema constraint decision |
+| Question                                                           | Why it matters                                                                            |
+| ------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| **Database host** — Supabase or Railway?                           | Connection string format + whether you need Prisma connection pooling (`?pgbouncer=true`) |
+| **Ranking list pre-population** — blank or seeded from NCAA seeds? | Determines if you need a "suggested order" import step                                    |
+| **System-wide competition limit?**                                 | Schema constraint decision                                                                |
 
 Once you answer the three blocking ones, code generation can start from the top of the stack.

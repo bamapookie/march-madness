@@ -1,5 +1,4 @@
-March Madness Bracket App
-=========================
+# March Madness Bracket App
 
 Application Design Document
 
@@ -63,7 +62,7 @@ Each competition is configured by its organizer. The following settings are avai
 ### 3.1 Access & Membership
 
 | **Setting**            | **Options**                                          | **Description**                                                 |
-|------------------------|------------------------------------------------------|-----------------------------------------------------------------|
+| ---------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
 | **Visibility**         | Public (join via link) or <br/>Private (invite-only) | Controls who can discover and <br/>join the competition         |
 | **Max lists per user** | 1 or more <br/>(organizer sets limit)                | How many ranking lists <br/>a single user may enter             |
 | **Join deadline**      | Locks at tournament start                            | All competitions lock at tournament <br/>start; no late entries |
@@ -92,7 +91,7 @@ Points awarded for correctly predicting the winner of a specific game.
 #### Bonus: Seeding Accuracy Points
 
 - Optional bonus points for correctly predicting a school advances to the exact round they were seeded to reach based on the user's original ranking.
-- Organizer enables/disables this and sets the bonus values per round.  0 points for the First Four and Round of 64.
+- Organizer enables/disables this and sets the bonus values per round. 0 points for the First Four and Round of 64.
 - To win this bonus, a team must advance to the round after their last predicted winning round, and if not picked to win the tournament, must lose in that next round. For example, if a user ranked a team to win in the Sweet 16, that team must win in the Round of 64, the Round of 32, and the Sweet 16, then lose in the Elite 8 to earn the bonus points for the Sweet 16.
 
 ### 3.3 Reseeding Options
@@ -100,7 +99,7 @@ Points awarded for correctly predicting the winner of a specific game.
 When an upset occurs (a lower-ranked school defeats a higher-ranked school), subsequent rounds can be handled in one of two ways:
 
 | **Mode**                                        | **Behavior**                                                                                                                                              |
-|-------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Slot-based (no reseed)**                      | The upset winner inherits the eliminated team's bracket slot. The user's ranking still determines all subsequent matchups in that slot.                   |
 | **Reseed by original**                          | After each round, surviving teams are redistributed ranking into a fresh bracket seeded by each user's original ranking order, ignoring how they arrived. |
 | **Organizer selects one mode per competition.** | This applies to both the Men's and Women's brackets equally.                                                                                              |
@@ -117,11 +116,11 @@ When two participants have identical total scores, the tiebreaker is resolved as
 ### 4.1 Entity Overview
 
 | **Entity**          | **Key Fields**                                                           | **Notes**                                               |
-|---------------------|--------------------------------------------------------------------------|---------------------------------------------------------|
-| users               | id, name, email, avatar_url, oauth_provider,  oauth_id                   | One record per person regardless of OAuth provider used |
-| tournament_seasons  | id, year, mens_start_at,  womens_start_at, lock_a                        | Defines the active season  window; locks all brackets   |
-| schools             | id, name, conference, has_mens_team, has_womens_team                     | Populated from tournament  field each year              |
-| bracket_slots       | id, season_id, gender, region, round, slot_number, school_id             | Official NCAA bracket  placement; First Four included   |
+| ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
+| users               | id, name, email, avatar_url, oauth_provider, oauth_id                    | One record per person regardless of OAuth provider used |
+| tournament_seasons  | id, year, mens_start_at, womens_start_at, lock_a                         | Defines the active season window; locks all brackets    |
+| schools             | id, name, conference, has_mens_team, has_womens_team                     | Populated from tournament field each year               |
+| bracket_slots       | id, season_id, gender, region, round, slot_number, school_id             | Official NCAA bracket placement; First Four included    |
 | ranking_lists       | id, user_id, season_id, name, locked, created_at                         | One per user-created ranking; max unlimited per user    |
 | ranking_entries     | id, ranking_list_id, school_id, rank_position                            | Ordered list of schools 1..N for a given ranking list   |
 | competitions        | id, name, creator_id, season_id, is_public, settings_json                | settings_json holds all scoring/reseeding config        |
@@ -138,10 +137,7 @@ The settings_json column on competitions stores all configurable options:
 ```json
 {
   "max_lists_per_use": 1,
-  "scoring_mode": [
-    "round_advancemen",
-    "correct_winner"
-  ],
+  "scoring_mode": ["round_advancemen", "correct_winner"],
   "seeding_bonus_enable": true,
   "seeding_bonus_points": 5,
   "reseed_mod": "slot_based",
@@ -216,7 +212,7 @@ Once the tournament begins, game results are polled and imported automatically. 
 ## 7. Recommended Technology Stack
 
 | **Layer**      | **Technology**               | **Rationale**                                                                              |
-|----------------|------------------------------|--------------------------------------------------------------------------------------------|
+| -------------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
 | Frontend       | Next.js (React)              | SSR + static generation, built-in API routes, excellent OAuth support via NextAuth.js      |
 | Backend API    | Next.js API Routes           | Co-located with frontend, reduces operational complexity at this scale                     |
 | Database       | PostgreSQL                   | Relational model fits bracket/competition data perfectly; strong JSON support for settings |
@@ -242,7 +238,7 @@ All three providers are configured as NextAuth.js providers with client ID and s
 ### 8.1 Small Scale (Personal / Friends Group, \<500 users)
 
 | **Resource**     | **Service**                                       | **Estimated Monthly Cost** |
-|------------------|---------------------------------------------------|----------------------------|
+| ---------------- | ------------------------------------------------- | -------------------------- |
 | Frontend + API   | Vercel                                            | Hobby Free                 |
 | PostgreSQL       | Supabase Free                                     | Tier Free                  |
 | Results Cron Job | Vercel Cron <br/>(or Supabase Free Edge Function) |                            |
@@ -252,7 +248,7 @@ All three providers are configured as NextAuth.js providers with client ID and s
 ### 8.2 Medium Scale (Hundreds to Low Thousands of Users)
 
 | **Resource**                  | **Service**             | **Estimated Monthly Cost** |
-|-------------------------------|-------------------------|----------------------------|
+| ----------------------------- | ----------------------- | -------------------------- |
 | Frontend + API                | Vercel Pro              | \$20                       |
 | PostgreSQL                    | Railway or Supabase Pro | \$10--\$25                 |
 | Cron / Background Jobs Worker | Vercel Cron or Railway  | Included or \$5            |
@@ -269,7 +265,7 @@ All three providers are configured as NextAuth.js providers with client ID and s
 ## 9. Application Screen Inventory
 
 | **Screen**                      | **Description**                                                                                                   |
-|---------------------------------|-------------------------------------------------------------------------------------------------------------------|
+| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
 | Landing / Login                 | OAuth login with Google, Apple, Microsoft. <br/>Brief app description. Tournament status banner.                  |
 | Dashboard                       | User's ranking lists, active competitions, <br/>notifications feed, tournament season status.                     |
 | Create / Edit <br/>Ranking List | Drag-and-drop interface to order all tournament <br/>schools. Save, name, and preview both brackets.              |
@@ -291,4 +287,4 @@ The following items should be confirmed before implementation begins:
 - Should competitions support a Finals prediction bonus (e.g., predict the combined championship game score for a special tiebreaker)?
 - What is the expected launch timeline relative to Selection Sunday and tournament start?
 
-*End of Design Document*
+_End of Design Document_

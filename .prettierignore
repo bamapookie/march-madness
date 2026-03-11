@@ -1,0 +1,15 @@
+# Dependencies
+node_modules/
+
+# Next.js build output
+.next/
+out/
+build/
+
+# Prisma generated client
+src/generated/
+
+# Misc
+*.tsbuildinfo
+next-env.d.ts
+
