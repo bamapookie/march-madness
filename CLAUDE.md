@@ -117,6 +117,8 @@ notifications          — In-app notifications (polled client-side)
 
 **Seeding accuracy bonus:** Bonus points when a school exits the tournament in the exact round the user's resolved bracket predicted — including a separate bonus for correctly predicting the championship winner.
 
+**Ranking list pre-population:** When a user creates a new ranking list, it is pre-filled with all tournament schools sorted ascending by their average NCAA seed across both tournaments. Schools appearing in both Men's and Women's tournaments use the average of their two seeds; schools in only one tournament use that seed directly. Ties are broken alphabetically by school name. Users may then reorder from this starting point.
+
 **Tiebreaker:** When scores are tied, the user whose Men's and Women's bracket scores have the smaller absolute difference wins. Rewards balanced knowledge across both tournaments.
 
 ---
@@ -277,11 +279,12 @@ type SeedingBonusPointMap = {
     - Auth.js v5 (`next-auth@5`). Uses `AUTH_SECRET` env var, `auth()` for session access in server components, and `export { auth as middleware }` pattern in `src/middleware.ts`.
 - [x] Seeding accuracy bonus for the championship winner?
     - "Winning the championship" is treated as its own exit point with a separately configurable bonus (`championship_winner`), distinct from losing in the championship game (`championship_runner_up`). Both are keys in `SeedingBonusPointMap`.
+- [x] Ranking list pre-population — does the user start from a blank list, or a list pre-ordered by NCAA seed?
+    - Pre-populated in ascending order by each school's average NCAA seed across both tournaments. Schools in both tournaments use the average of their Men's and Women's seeds; schools in only one tournament use that seed directly. Ties broken alphabetically by school name. Users reorder from this starting point.
 
 ## Open Questions (still to resolve)
 
 - [ ] `reseed_by_ranking` mode — after real results come in, does the predicted bracket do a full re-resolution using only surviving teams, or a partial adjustment to the existing predicted bracket?
 - [ ] First Four lock timing — does `lock_at` fall before the First Four games, or before the Round of 64?
 - [ ] Database host — Supabase or Railway?
-- [ ] Ranking list pre-population — does the user start from a blank list, or a list pre-ordered by NCAA seed?
 ```
