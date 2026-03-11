@@ -156,15 +156,15 @@ This affects enforcement logic in the API layer.
 
 ## 🟢 Minor Things Worth Confirming
 
-| Item | Question |
-|---|---|
-| **Database host** | Supabase or Railway? Affects connection string format and pooling config |
-| **Prisma schema** | Not written yet — needs full field definitions, indexes, and constraints before any code |
-| **`/types` directory** | Empty — shared TypeScript types need to be defined first to avoid circular dependencies |
-| **`import:results` script** | Needs to be added to `package.json` scripts |
-| **`typecheck` script** | Missing from `package.json` — add `"typecheck": "tsc --noEmit"` |
-| **ESPN group IDs** | `groups=50` (Men's) and `groups=49` (Women's) in CLAUDE.md — worth a quick live test to confirm these are still correct for 2026 |
-| **Max competition entries** | Is there a system-wide limit on number of competitions, or just `max_lists_per_user` per competition? |
+| Item                        | Question                                                                                                                         |
+|-----------------------------|----------------------------------------------------------------------------------------------------------------------------------|
+| **Database host**           | Supabase or Railway? Affects connection string format and pooling config                                                         |
+| **Prisma schema**           | Not written yet — needs full field definitions, indexes, and constraints before any code                                         |
+| **`/types` directory**      | Empty — shared TypeScript types need to be defined first to avoid circular dependencies                                          |
+| **`import:results` script** | Needs to be added to `package.json` scripts                                                                                      |
+| **`typecheck` script**      | Missing from `package.json` — add `"typecheck": "tsc --noEmit"`                                                                  |
+| **ESPN group IDs**          | `groups=50` (Men's) and `groups=49` (Women's) in CLAUDE.md — worth a quick live test to confirm these are still correct for 2026 |
+| **Max competition entries** | Is there a system-wide limit on number of competitions, or just `max_lists_per_user` per competition?                            |
 
 ---
 
@@ -183,3 +183,59 @@ Once decisions are made, the safest generation order is:
 9. **UI components** — last, once the data layer is proven
 
 The three decisions that will block everything else: **Vercel Cron vs node-cron**, **Auth.js v4 vs v5**, and **seeding accuracy bonus interpretation**.
+
+# Use Vercel Cron and Auth.js v5
+
+Good decisions. Here's what those choices lock in architecturally, and what's still open:
+
+---
+
+## ✅ What These Decisions Settle
+
+### Vercel Cron
+- Cron schedules live in **`vercel.json`**, not in application code
+- Each schedule calls a **protected API route** (e.g., `GET /api/cron/import-results`)
+- The route must be protected with a `CRON_SECRET` env var — Vercel injects an `Authorization` header on each call; the route validates it
+- `src/lib/import.ts` becomes a **plain async function** (no scheduler logic at all), called by the API route
+- The `npm run import:results` dev script should call the same function directly for local testing
+- **Execution time limit:** 60s on Hobby plan, 300s on Pro — the import function must complete within this
+
+### Auth.js v5
+- Package is **`next-auth@5`** (beta/stable v5), adapter is **`@auth/prisma-adapter`**
+- Config lives in **`src/lib/auth.ts`** and exports `{ auth, signIn, signOut, handlers }`
+- Route handler is a single file at **`src/app/api/auth/[...nextauth]/route.ts`** that re-exports `handlers`
+- Server components use `const session = await auth()` — no more `getServerSession()`
+- Middleware uses `export { auth as middleware } from "@/lib/auth"` in `src/middleware.ts`
+- Requires **`AUTH_SECRET`** env var (replaces `NEXTAUTH_SECRET`)
+
+---
+
+## ❓ Still Open (Blocking Code Generation)
+
+These three still need answers before the scoring and bracket logic can be written:
+
+### 1. Seeding accuracy bonus interpretation
+Which definition?
+- **A — Ranking-position-based:** A school's "predicted round" is determined by their rank position (e.g., rank 1–4 → predicted champion, 5–8 → predicted finalist, etc. based on how many teams are in the bracket)
+- **B — Bracket-resolution-based:** After the bracket is resolved at lock time, the round where the school is predicted to be *eliminated* is stored — that's their target round
+
+### 2. `reseed_by_ranking` mode
+After a round's real results come in, do you:
+- **A — Full re-resolution:** Take all surviving teams, re-sort by original rank, and re-fill the remaining bracket slots fresh (winners/losers change for future rounds)
+- **B — Partial adjustment:** Keep the already-resolved predicted bracket, but swap out eliminated teams' future slots with the actual survivor
+
+### 3. First Four lock timing
+- **Before First Four** — users must submit before any games are played
+- **Before Round of 64** — users can wait to see First Four results, then lock in
+
+---
+
+## ❓ Still Open (Non-Blocking But Should Confirm Soon)
+
+| Question | Why it matters |
+|---|---|
+| **Database host** — Supabase or Railway? | Connection string format + whether you need Prisma connection pooling (`?pgbouncer=true`) |
+| **Ranking list pre-population** — blank or seeded from NCAA seeds? | Determines if you need a "suggested order" import step |
+| **System-wide competition limit?** | Schema constraint decision |
+
+Once you answer the three blocking ones, code generation can start from the top of the stack.
