@@ -79,7 +79,7 @@ npm run import:results
 
 ```
 users                  — OAuth-authenticated users (no passwords)
-tournament_seasons     — Active season with lock_at timestamp
+tournament_seasons     — Active season with first_four_lock_at and round_of_64_lock_at timestamps
 schools                — All teams in Men's and/or Women's tournament
 bracket_slots          — Official NCAA bracket positions (region/round/slot)
 ranking_lists          — A user's ordered list of schools (1 = best)
@@ -118,6 +118,8 @@ notifications          — In-app notifications (polled client-side)
 **Seeding accuracy bonus:** Bonus points when a school exits the tournament in the exact round the user's resolved bracket predicted — including a separate bonus for correctly predicting the championship winner.
 
 **Ranking list pre-population:** When a user creates a new ranking list, it is pre-filled with all tournament schools sorted ascending by their average NCAA seed across both tournaments. Schools appearing in both Men's and Women's tournaments use the average of their two seeds; schools in only one tournament use that seed directly. Ties are broken alphabetically by school name. Users may then reorder from this starting point.
+- If `lock_mode = "before_first_four"`: the list includes all 68 Men's + 68 Women's teams (up to 136 schools total)
+- If `lock_mode = "before_round_of_64"`: the list includes only the 64 Round of 64 qualifiers per gender (up to 128 schools total); First Four results must be imported before ranking lists can be created
 
 **Tiebreaker:** When scores are tied, the user whose Men's and Women's bracket scores have the smaller absolute difference wins. Rewards balanced knowledge across both tournaments.
 
@@ -128,6 +130,7 @@ notifications          — In-app notifications (polled client-side)
 ```typescript
 type CompetitionSettings = {
   max_lists_per_user: number;
+  lock_mode: "before_first_four" | "before_round_of_64";
   scoring_mode: Array<"round_advancement" | "correct_winner">;
   seeding_bonus_enabled: boolean;
   seeding_bonus_points: SeedingBonusPointMap;
@@ -197,6 +200,7 @@ type SeedingBonusPointMap = {
 - Cache results in a scores summary table; do not recompute on every leaderboard read
 - Tiebreaker value = `Math.abs(mens_score - womens_score)` — lower is better
 - Points are earned based on `competition_settings` for each competition entry:
+    - When `lock_mode = "before_round_of_64"`: no points are awarded for First Four games in any scoring mode; `first_four` values in all point maps are ignored
     - Round advancement points: awarded for each school that reaches the predicted round or beyond.
         - Points are only awarded for the original team in the slot, not for any team that later inherits that slot due to reseeding
         - No points for the first round (Round of 64) since all teams start there, except for the First Four play-in games which can earn points if predicted correctly
@@ -281,10 +285,11 @@ type SeedingBonusPointMap = {
     - "Winning the championship" is treated as its own exit point with a separately configurable bonus (`championship_winner`), distinct from losing in the championship game (`championship_runner_up`). Both are keys in `SeedingBonusPointMap`.
 - [x] Ranking list pre-population — does the user start from a blank list, or a list pre-ordered by NCAA seed?
     - Pre-populated in ascending order by each school's average NCAA seed across both tournaments. Schools in both tournaments use the average of their Men's and Women's seeds; schools in only one tournament use that seed directly. Ties broken alphabetically by school name. Users reorder from this starting point.
+- [x] First Four lock timing — does `lock_at` fall before the First Four games, or before the Round of 64?
+    - Competition organizers choose via `lock_mode` in `CompetitionSettings`. `tournament_seasons` stores both `first_four_lock_at` and `round_of_64_lock_at` timestamps (set by admin). Each competition enforces the timestamp matching its chosen `lock_mode`. When `lock_mode = "before_round_of_64"`, no First Four points are awarded in any scoring mode and ranking lists are built from the 64 Round of 64 qualifiers only.
 
 ## Open Questions (still to resolve)
 
 - [ ] `reseed_by_ranking` mode — after real results come in, does the predicted bracket do a full re-resolution using only surviving teams, or a partial adjustment to the existing predicted bracket?
-- [ ] First Four lock timing — does `lock_at` fall before the First Four games, or before the Round of 64?
 - [ ] Database host — Supabase or Railway?
 ```
