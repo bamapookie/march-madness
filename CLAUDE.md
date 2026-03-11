@@ -109,7 +109,7 @@ notifications          — In-app notifications (polled client-side)
 
 **Reseeding (slot-based):** After an upset, the winning school inherits the loser's bracket slot and continues from there.
 
-**Reseeding (by original ranking):** After each round, surviving schools are redistributed into fresh bracket seeds based on their original rank position.
+**Reseeding (by original ranking):** When real results eliminate a team that was predicted to appear in a future matchup, the actual advancing team replaces them in that slot. The matchup winner is then re-evaluated by comparing the two teams' rank positions in the user's original ranking. Only matchups involving at least one eliminated team are updated; matchups where both predicted teams are still alive retain their original prediction.
 
 **Scoring — round advancement:** Points for correctly predicting a school reaches a given round, regardless of path.
 
@@ -188,7 +188,7 @@ type SeedingBonusPointMap = {
 1. Load official `bracket_slots` for the season and gender
 2. Resolve First Four: compare rank positions of the two schools in each play-in slot; lower number advances
 3. Resolve each subsequent round the same way
-4. If `reseed_mode = "reseed_by_ranking"`: after each round's actual results import, redistribute surviving schools by original rank before resolving the next predicted round
+4. If `reseed_mode = "reseed_by_ranking"`: after each round's actual results import, scan all future predicted matchups. For any matchup where one or more teams have been eliminated in reality, replace the eliminated team with the actual advancing team and re-evaluate the matchup winner by comparing the two teams' rank positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
 5. Store the resolved bracket — do not recompute on every read
 
 ---
@@ -287,9 +287,10 @@ type SeedingBonusPointMap = {
     - Pre-populated in ascending order by each school's average NCAA seed across both tournaments. Schools in both tournaments use the average of their Men's and Women's seeds; schools in only one tournament use that seed directly. Ties broken alphabetically by school name. Users reorder from this starting point.
 - [x] First Four lock timing — does `lock_at` fall before the First Four games, or before the Round of 64?
     - Competition organizers choose via `lock_mode` in `CompetitionSettings`. `tournament_seasons` stores both `first_four_lock_at` and `round_of_64_lock_at` timestamps (set by admin). Each competition enforces the timestamp matching its chosen `lock_mode`. When `lock_mode = "before_round_of_64"`, no First Four points are awarded in any scoring mode and ranking lists are built from the 64 Round of 64 qualifiers only.
+- [x] `reseed_by_ranking` mode — full re-resolution or partial adjustment?
+    - Partial adjustment only. After each round's real results are imported, any future predicted matchup where one or more teams have been eliminated is updated: the eliminated team is replaced with the actual advancing team, and the matchup winner is re-evaluated using the two teams' rank positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
 
 ## Open Questions (still to resolve)
 
-- [ ] `reseed_by_ranking` mode — after real results come in, does the predicted bracket do a full re-resolution using only surviving teams, or a partial adjustment to the existing predicted bracket?
 - [ ] Database host — Supabase or Railway?
 ```
