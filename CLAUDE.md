@@ -167,6 +167,11 @@ notifications          — In-app notifications (polled client-side)
 
 **Ranking list:** The user's ordered list of all tournament schools. This IS their bracket prediction. No separate picks needed.
 
+**Ranking list pre-population:** When a user creates a new ranking list, it is pre-filled with all tournament schools sorted ascending by their average NCAA seed across both tournaments. Schools appearing in both Men's and Women's tournaments use the average of their two seeds; schools in only one tournament use that seed directly. Ties are broken alphabetically by school name. Users may then reorder from this starting point.
+
+- If `lock_mode = "before_first_four"`: the list includes all 68 Men's + 68 Women's teams (up to 136 schools total)
+- If `lock_mode = "before_round_of_64"`: the list includes only the 64 Round of 64 qualifiers per gender (up to 128 schools total); First Four results must be imported before ranking lists can be created
+
 **Bracket resolution:** Given a ranking list and the official NCAA bracket slots, simulate every game by advancing the school with the lower rank number (higher rank = smaller number). Includes First Four play-in games.
 
 **Reseeding (slot-based):** After an upset, the winning school inherits the loser's bracket slot and continues from there.
@@ -179,10 +184,6 @@ notifications          — In-app notifications (polled client-side)
 
 **Seeding accuracy bonus:** Bonus points when a school exits the tournament in the exact round the user's resolved bracket predicted — including a separate bonus for correctly predicting the championship winner.
 
-**Ranking list pre-population:** When a user creates a new ranking list, it is pre-filled with all tournament schools sorted ascending by their average NCAA seed across both tournaments. Schools appearing in both Men's and Women's tournaments use the average of their two seeds; schools in only one tournament use that seed directly. Ties are broken alphabetically by school name. Users may then reorder from this starting point.
-
-- If `lock_mode = "before_first_four"`: the list includes all 68 Men's + 68 Women's teams (up to 136 schools total)
-- If `lock_mode = "before_round_of_64"`: the list includes only the 64 Round of 64 qualifiers per gender (up to 128 schools total); First Four results must be imported before ranking lists can be created
 
 **Tiebreaker:** When scores are tied, the user whose Men's and Women's bracket scores have the smaller absolute difference wins. Rewards balanced knowledge across both tournaments.
 
