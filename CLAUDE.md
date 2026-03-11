@@ -23,23 +23,23 @@ Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can s
 - Base layout and navigation shell
 - Environment variable documentation (`.env.example`)
 
-### 0.2.0 — Core Domain Logic *(pure, testable, no DB)*
+### 0.2.0 — Ranking Lists *(core user action)*
+- API routes — create, read, update ranking list and entries
+- Ranking list pre-population by average NCAA seed
+- Lock enforcement at the API layer (reject mutations after `lock_at`)
+- Ranking list UI — drag-to-reorder, save, view (`src/app/ranking`)
+
+### 0.3.0 — Core Domain Logic *(pure, testable, no DB)*
 - Bracket resolution — slot-based and reseed_by_ranking (`src/lib/bracket.ts`)
 - Scoring engine — round advancement, correct winner, seeding accuracy bonus (`src/lib/scoring.ts`)
 - Unit tests for both
 
-### 0.3.0 — ESPN Import & Season Setup *(data foundation)*
+### 0.4.0 — ESPN Import & Season Setup *(data foundation)*
 - ESPN API client — schools, bracket slots, scoreboard, tournament results (`src/lib/import.ts`)
 - Admin API route — manual import trigger (`src/app/api/admin/import/route.ts`)
 - Vercel Cron Job — scheduled polling (`src/app/api/cron/import-results/route.ts`, `vercel.json`)
 - Dev script — `npm run import:results` (`src/scripts/import-results.ts`)
 - Admin page — import status, stale data warnings, manual trigger (`src/app/admin`)
-
-### 0.4.0 — Ranking Lists *(core user action)*
-- API routes — create, read, update ranking list and entries
-- Ranking list pre-population by average NCAA seed
-- Lock enforcement at the API layer (reject mutations after `lock_at`)
-- Ranking list UI — drag-to-reorder, save, view (`src/app/ranking`)
 
 ### 0.5.0 — Competitions *(group play)*
 - API routes — create competition, join, submit ranking list entry
