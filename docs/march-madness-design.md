@@ -70,27 +70,30 @@ Each competition is configured by its organizer. The following settings are avai
 
 ### 3.2 Scoring Options
 
-Organizers define scoring independently for each competition. Two scoring modes are available and may be combined:
+Organizers define scoring independently for each competition. Several scoring modes are available and may be combined:
 
-#### Mode A: Round Advancement Points
+#### Mode 1: Round Advancement Points
 
 Points awarded for correctly predicting that a school reaches a given round, regardless of path.
 
-- Organizer sets a point value for each round (First Four throughChampionship).
+- Organizer sets a point value for each round (First Four through Championship).
 - A school reaching a round earns points for any participant whose ranking had that school reaching at least that round.
 
-#### Mode B: Correct Game Winner Points
+#### Mode 2: Correct Game Winner Points
 
 Points awarded for correctly predicting the winner of a specific game.
 
 - Organizer sets a point value per correct game winner per round.
-- Points scale by round as configured.
+- If a participant's bracket predicted School A to beat School B in the Round of 64, and that game actually resulted in School A winning, the participant earns points for that correct prediction.
+- If reseeding is enabled, and a participant's predicted winner of a matchup is eliminated, later rounds are recalculated based on the surviving teams, but points for correct winners are still awarded based on the original rankings.
+  - For example, if a participant predicted an 8 team bracket with the official seeds ranked 5, 6, 2, 1, 3, 4, 8, 7, and the 8 seed beats the 1 seed, and the 4 seed beats the 5 seed, then the 8 seed will play the 4 seed in the next round. Since the participant originally ranked the 4 seed higher than the 8 seed, the participant's predicted winner of that matchup would be the 4 seed. If the 4 seed then beats the 8 seed, the participant would earn points for that matchup since their predicted winner (the 4 seed) won.
+- If reseeding is disabled, then a matchup where an eliminated team was predicted to win would simply not earn points.
 
 #### Bonus: Seeding Accuracy Points
 
-- Optional bonus points for correctly predicting a school advances to the exact round they were seeded to reach based on
-  the user's original ranking.
-- Organizer enables/disables this and sets the bonus value.
+- Optional bonus points for correctly predicting a school advances to the exact round they were seeded to reach based on the user's original ranking.
+- Organizer enables/disables this and sets the bonus values per round.  0 points for the First Four and Round of 64.
+- To win this bonus, a team must advance to the round after their last predicted winning round, and if not picked to win the tournament, must lose in that next round. For example, if a user ranked a team to win in the Sweet 16, that team must win in the Round of 64, the Round of 32, and the Sweet 16, then lose in the Elite 8 to earn the bonus points for the Sweet 16.
 
 ### 3.3 Reseeding Options
 
