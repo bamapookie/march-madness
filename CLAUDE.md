@@ -17,7 +17,7 @@ Users compete in groups (competitions) where organizers configure scoring, resee
 | Database       | PostgreSQL                                   |
 | ORM            | Prisma                                       |
 | Auth           | Auth.js v5 (Google, Apple, Microsoft OAuth)  |
-| Hosting        | Vercel (app) + Supabase or Railway (DB)      |
+| Hosting        | Vercel (app) + Railway (DB)                  |
 | Results import | Vercel Cron Jobs polling ESPN API            |
 | Notifications  | In-app only (no email)                       |
 
@@ -289,8 +289,6 @@ type SeedingBonusPointMap = {
     - Competition organizers choose via `lock_mode` in `CompetitionSettings`. `tournament_seasons` stores both `first_four_lock_at` and `round_of_64_lock_at` timestamps (set by admin). Each competition enforces the timestamp matching its chosen `lock_mode`. When `lock_mode = "before_round_of_64"`, no First Four points are awarded in any scoring mode and ranking lists are built from the 64 Round of 64 qualifiers only.
 - [x] `reseed_by_ranking` mode — full re-resolution or partial adjustment?
     - Partial adjustment only. After each round's real results are imported, any future predicted matchup where one or more teams have been eliminated is updated: the eliminated team is replaced with the actual advancing team, and the matchup winner is re-evaluated using the two teams' rank positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
-
-## Open Questions (still to resolve)
-
-- [ ] Database host — Supabase or Railway?
+- [x] Database host — Supabase or Railway?
+    - Railway. Plain PostgreSQL, no extra connection pooling config required, no inactivity pauses, and no unused platform features. Standard `DATABASE_URL` connection string works with Prisma out of the box.
 ```
