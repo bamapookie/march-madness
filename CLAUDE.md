@@ -332,6 +332,28 @@ type SeedingBonusPointMap = {
 
 ---
 
+## Documentation Maintenance
+
+Documentation must be kept in sync with the code. This applies to every session, and is especially required when a milestone is delivered.
+
+### Files to update
+
+| File | When to update |
+| --- | --- |
+| `CLAUDE.md` | Any time a milestone is completed, an open question is resolved, a new convention is established, or a key architectural decision is made |
+| `CHANGELOG.md` | On every milestone delivery — move the milestone from *In Progress* to a dated release entry listing all additions |
+| `README.md` | When commands, environment variables, getting-started steps, or the milestone status table change |
+
+### Rules
+
+- **Mark milestones complete** — when a milestone ships, update `CLAUDE.md` to `✅ _complete_` and add a full entry to `CHANGELOG.md`.
+- **Resolve open questions in place** — when an open question in `CLAUDE.md` is answered (by the user or by implementation), mark it `[x]` and record the answer inline. Never delete answered questions.
+- **Keep Key Commands accurate** — if a new `npm run` script is added or changed, update the Key Commands section in both `CLAUDE.md` and `README.md`.
+- **Commit docs with the code** — documentation changes must be committed in the same session as the code changes they describe, not deferred to a later commit.
+- **No stale milestone status** — the milestone status table in `README.md` must match the `✅ / 🔲` state of the milestones in `CLAUDE.md` at all times.
+
+---
+
 ## Open Questions (resolve before implementing)
 
 - [x] Which ESPN API endpoint / key will be used for live results?
