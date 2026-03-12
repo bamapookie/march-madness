@@ -28,8 +28,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ],
   // Override callbacks: drop the edge-only `authorized` check and add session enrichment
   callbacks: {
-    session({ session, user }) {
-      session.user.id = user.id;
+    jwt({ token, user }) {
+      // `user` is only present on the initial sign-in; persist the DB id into the token
+      if (user?.id) token.id = user.id;
+      return token;
+    },
+    session({ session, token }) {
+      if (token.id) session.user.id = token.id as string;
       return session;
     },
   },

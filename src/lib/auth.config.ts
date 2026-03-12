@@ -14,6 +14,7 @@ import type { NextAuthConfig } from "next-auth";
  */
 export const authConfig = {
   providers: [], // OAuth providers live in auth.ts (Node.js runtime only)
+  session: { strategy: "jwt" as const },
   pages: {
     signIn: "/sign-in",
   },
@@ -24,4 +25,5 @@ export const authConfig = {
     },
   },
 } satisfies NextAuthConfig;
+
 
