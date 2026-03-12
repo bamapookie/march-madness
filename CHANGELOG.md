@@ -11,7 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### In Progress
 
-- Milestone 0.2.0 — Ranking Lists
+- Milestone 0.3.0 — Core Domain Logic (bracket resolution + scoring engine)
+
+---
+
+## [0.2.0] — 2026-03-12
+
+### Ranking Lists
+
+- `LockMode` enum (`BEFORE_FIRST_FOUR` / `BEFORE_ROUND_OF_64`) added to Prisma schema; migration applied
+- `src/lib/ranking.ts` — pure utilities: `getAverageSeed`, `sortSchoolsByDefaultRank`, `isRankingListLocked`, `getLockAt`
+- API routes:
+  - `GET  /api/ranking-lists` — list user's ranking lists for the active season
+  - `POST /api/ranking-lists` — create + pre-populate; enforces lock; BEFORE_ROUND_OF_64 gates on First Four results
+  - `GET  /api/ranking-lists/[id]` — full list with entries and school detail
+  - `PATCH /api/ranking-lists/[id]` — rename (rejected when locked)
+  - `DELETE /api/ranking-lists/[id]` — delete (blocked if submitted to a competition)
+  - `PUT  /api/ranking-lists/[id]/entries` — atomic reorder via delete + re-create in one transaction
+- Pre-population: schools sorted ascending by average NCAA seed, then alphabetically for ties
+- Lock enforcement at the API layer — mutations rejected after `firstFourLockAt` or `roundOf64LockAt`
+- Drag-to-reorder UI (`@dnd-kit/sortable`) with inline name editing, gender filter, school search, and Save button
+- `/ranking` page — list of ranking lists with create / edit / delete
+- `/ranking/[id]` page — full drag-and-drop editor
+- `src/scripts/seed-test-season.ts` + `npm run seed:test` — seeds 53 realistic 2026 tournament schools
+- Added `lucide-react` for icons
+- Added `RankingListSummary`, `RankingListDetail`, `SchoolSummary`, `RankingEntryWithSchool` to shared types
 
 ---
 
@@ -46,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
-[Unreleased]: https://github.com/your-org/march-madness/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/your-org/march-madness/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/your-org/march-madness/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/your-org/march-madness/releases/tag/v0.1.0
 

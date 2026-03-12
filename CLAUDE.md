@@ -13,7 +13,7 @@ Users compete in groups (competitions) where organizers configure scoring, resee
 Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round of 64 begins **~March 20**.
 Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can ship during the tournament.
 
-### 0.1.0 — Foundation _(prerequisite for everything)_
+### 0.1.0 — Foundation ✅ _complete_
 
 - Prisma schema — all tables, relations, indexes
 - Shared TypeScript types (`/types`)
@@ -24,7 +24,7 @@ Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can s
 - Base layout and navigation shell
 - Environment variable documentation (`.env.example`)
 
-### 0.2.0 — Ranking Lists _(core user action)_
+### 0.2.0 — Ranking Lists ✅ _complete_
 
 - API routes — create, read, update ranking list and entries
 - Ranking list pre-population by average NCAA seed
@@ -146,6 +146,9 @@ npm run format:check      # Prettier — check formatting (CI)
 
 # Results import (manual trigger for testing)
 npm run import:results
+
+# Development data seeding
+npm run seed:test         # Seed a 2026 season + 53 test schools (local dev only)
 ```
 
 > **Prisma v7 notes:** The schema has no `datasource url` — the connection string lives in

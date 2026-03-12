@@ -71,7 +71,15 @@ Edit `.env` and fill in all required values. See [Environment Variables](#enviro
 npx prisma migrate dev
 ```
 
-### 5. Start the development server
+### 5. Seed test data (development only)
+
+```bash
+npm run seed:test
+```
+
+This creates a 2026 tournament season and seeds 53 representative schools so you can immediately create and reorder ranking lists without waiting for ESPN data to be imported.
+
+### 6. Start the development server
 
 ```bash
 npm run dev
@@ -125,6 +133,9 @@ npm run format:check      # Prettier — check formatting (CI)
 
 # Results import (manual trigger for testing)
 npm run import:results
+
+# Development data seeding
+npm run seed:test         # Seed a 2026 season + 53 test schools (local dev only)
 ```
 
 ---
@@ -157,6 +168,21 @@ npm run import:results
   /migrations             # Prisma migration files
 prisma.config.ts          # Prisma v7 datasource + migrations config
 ```
+
+---
+
+## Milestone Status
+
+| Milestone | Description | Status |
+|-----------|-------------|--------|
+| **0.1.0** | Foundation — schema, auth, middleware, layout | ✅ Complete |
+| **0.2.0** | Ranking Lists — drag-to-reorder, API, lock enforcement | ✅ Complete |
+| **0.3.0** | Core Domain Logic — bracket resolution + scoring engine | 🔲 Not started |
+| **0.4.0** | ESPN Import & Season Setup — API client, cron job, admin | 🔲 Not started |
+| **0.5.0** | Competitions — group play, invites, lobby, dashboard | 🔲 Not started |
+| **0.6.0** | Bracket Viewer & Leaderboard | 🔲 Not started |
+| **0.7.0** | Notifications & Polish | 🔲 Not started |
+| **1.0.0** | Production Launch | 🔲 Not started |
 
 ---
 
