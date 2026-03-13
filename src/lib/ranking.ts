@@ -35,7 +35,7 @@ export function sortSchoolsByDefaultRank<T extends NamedSeedFields>(schools: T[]
  */
 export function getLockAt(
   season: { firstFourLockAt: Date; roundOf64LockAt: Date },
-  lockMode: LockMode,
+  lockMode: LockMode
 ): Date {
   return lockMode === "BEFORE_FIRST_FOUR" ? season.firstFourLockAt : season.roundOf64LockAt;
 }
@@ -45,8 +45,7 @@ export function getLockAt(
  */
 export function isRankingListLocked(
   season: { firstFourLockAt: Date; roundOf64LockAt: Date },
-  lockMode: LockMode,
+  lockMode: LockMode
 ): boolean {
   return new Date() >= getLockAt(season, lockMode);
 }
-

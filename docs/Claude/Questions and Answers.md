@@ -51,7 +51,9 @@ later round and determine all the scenarios that could occur with reseeding:
 
 # What APIs are available from ESPN to pull the results I need?
 
-The `src/lib/import.ts` file hasn't been created yet. Based on your project's needs (NCAA Men's and Women's tournament results), here's a rundown of the relevant **unofficial ESPN APIs** — ESPN doesn't publish an official public API, but their internal endpoints are widely used and well-documented by the community:
+The `src/lib/import.ts` file hasn't been created yet. Based on your project's needs (NCAA Men's and Women's tournament
+results), here's a rundown of the relevant **unofficial ESPN APIs** — ESPN doesn't publish an official public API, but
+their internal endpoints are widely used and well-documented by the community:
 
 ---
 
@@ -81,7 +83,8 @@ Returns game status, scores, team IDs, and winner for each game.
 GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/tournaments/{tournamentId}
 ```
 
-This returns the full bracket structure — regions, seeds, slots, and results round by round. This is your **most valuable endpoint** for mapping games to bracket positions (which directly maps to your `bracket_slots` table).
+This returns the full bracket structure — regions, seeds, slots, and results round by round. This is your **most
+valuable endpoint** for mapping games to bracket positions (which directly maps to your `bracket_slots` table).
 
 ---
 
@@ -119,15 +122,21 @@ Given your data model (`tournament_results`, `bracket_slots`), you need two thin
 
 ## Key Considerations
 
-1. **No API key required** — these are unauthenticated public endpoints, but ESPN can rate-limit or block them. Use reasonable polling intervals (your design doc says every 5 min during games, hourly otherwise — that's fine).
+1. **No API key required** — these are unauthenticated public endpoints, but ESPN can rate-limit or block them. Use
+   reasonable polling intervals (your design doc says every 5 min during games, hourly otherwise — that's fine).
 
-2. **Tournament IDs change each year** — you'll need to discover the `tournamentId` at the start of each season. You can find it by fetching the scoreboard during tournament week and inspecting the `groups` or `leagues` field in the response.
+2. **Tournament IDs change each year** — you'll need to discover the `tournamentId` at the start of each season. You can
+   find it by fetching the scoreboard during tournament week and inspecting the `groups` or `leagues` field in the
+   response.
 
-3. **Men's group ID = 100** (not 50 as sometimes cited) for the NCAA Tournament specifically — worth verifying via a live request as these have shifted over the years.
+3. **Men's group ID = 100** (not 50 as sometimes cited) for the NCAA Tournament specifically — worth verifying via a
+   live request as these have shifted over the years.
 
-4. **No official SLA** — ESPN has broken/changed these endpoints before. Your design doc's note about logging failures and surfacing stale data warnings to admins is exactly the right mitigation.
+4. **No official SLA** — ESPN has broken/changed these endpoints before. Your design doc's note about logging failures
+   and surfacing stale data warnings to admins is exactly the right mitigation.
 
-5. **CORS** — these endpoints block browser requests; your polling must run **server-side** (your `node-cron` job in `src/lib/import.ts` is the right place).
+5. **CORS** — these endpoints block browser requests; your polling must run **server-side** (your `node-cron` job in
+   `src/lib/import.ts` is the right place).
 
 ---
 
@@ -139,11 +148,13 @@ For `src/lib/import.ts`, the flow should be:
 2. Poll the **scoreboard endpoint** on your cron schedule → detect completed games → write to `tournament_results`
 3. After each write, trigger bracket score recomputation and leaderboard cache update
 
-The open question in your `CLAUDE.md` — _"Which ESPN API endpoint / key will be used?"_ — is answered: **no key needed**, just the endpoints above.
+The open question in your `CLAUDE.md` — _"Which ESPN API endpoint / key will be used?"_ — is answered: **no key
+needed**, just the endpoints above.
 
 # Is there anything else we need to consider before generating code?
 
-Good timing to do this review. Looking at the `package.json` and cross-referencing the full design, here are the gaps that should be resolved **before** generating code:
+Good timing to do this review. Looking at the `package.json` and cross-referencing the full design, here are the gaps
+that should be resolved **before** generating code:
 
 ---
 
@@ -153,7 +164,8 @@ Good timing to do this review. Looking at the `package.json` and cross-referenci
 
 Vercel is **serverless** — there's no persistent process for `node-cron` to run in. Options:
 
-- **Vercel Cron Jobs** (recommended) — define cron schedules in `vercel.json`, which call an API route. Free tier allows daily; paid tiers allow up to every minute
+- **Vercel Cron Jobs** (recommended) — define cron schedules in `vercel.json`, which call an API route. Free tier allows
+  daily; paid tiers allow up to every minute
 - **External worker** — a separate Railway or Render service running the cron
 
 This affects the architecture of `src/lib/import.ts` significantly. **Decision needed.**
@@ -171,7 +183,9 @@ node-cron + @types/node-cron (if not using Vercel Cron)
 
 ### 3. NextAuth version — v4 vs v5 (Auth.js)
 
-The API surface is completely different between the two. Given your Next.js 16 + React 19 stack, **Auth.js v5** is the right choice — but need to confirm, as the import paths (`next-auth/providers/google` vs `@auth/core/providers/google`) and config shape differ.
+The API surface is completely different between the two. Given your Next.js 16 + React 19 stack, **Auth.js v5** is the
+right choice — but need to confirm, as the import paths (`next-auth/providers/google` vs `@auth/core/providers/google`)
+and config shape differ.
 
 ---
 
@@ -187,7 +201,8 @@ The bracket field won't be announced until Sunday. This means:
 
 ### 5. School ranking list size — up to 136 teams
 
-Men's = 68 teams, Women's = 68 teams. A school **could** appear in both tournaments. Your design says they get **one slot** in the ranking. This raises:
+Men's = 68 teams, Women's = 68 teams. A school **could** appear in both tournaments. Your design says they get **one
+slot** in the ranking. This raises:
 
 - How is the initial ranking list pre-populated for the user? Do they start from a blank list or a suggested order?
 - How does the UI handle 136 items in a drag-to-rank interface?
@@ -198,14 +213,17 @@ Men's = 68 teams, Women's = 68 teams. A school **could** appear in both tourname
 
 How is "the round the ranking predicted" determined? Two interpretations:
 
-- **Interpretation A:** Based on the school's position in the user's ranking (e.g., if ranked #1–4 → predicted to reach championship)
-- **Interpretation B:** Based on where the bracket resolution _placed_ that school (i.e., the round they were predicted to exit in the resolved bracket)
+- **Interpretation A:** Based on the school's position in the user's ranking (e.g., if ranked #1–4 → predicted to reach
+  championship)
+- **Interpretation B:** Based on where the bracket resolution _placed_ that school (i.e., the round they were predicted
+  to exit in the resolved bracket)
 
 These produce very different scoring logic. **Decision needed.**
 
 ### 7. `reseed_by_ranking` mode needs a clearer spec
 
-The CLAUDE.md says: _"redistribute surviving schools by original rank before resolving the next predicted round."_ But the predicted bracket was already resolved once at lock time — do you:
+The CLAUDE.md says: _"redistribute surviving schools by original rank before resolving the next predicted round."_ But
+the predicted bracket was already resolved once at lock time — do you:
 
 - **Re-resolve the entire predicted bracket from scratch** each round using only surviving schools?
 - Or **only adjust the remaining rounds** of the already-resolved bracket?
@@ -249,7 +267,8 @@ Once decisions are made, the safest generation order is:
 8. **API routes** — once lib layer is solid
 9. **UI components** — last, once the data layer is proven
 
-The three decisions that will block everything else: **Vercel Cron vs node-cron**, **Auth.js v4 vs v5**, and **seeding accuracy bonus interpretation**.
+The three decisions that will block everything else: **Vercel Cron vs node-cron**, **Auth.js v4 vs v5**, and **seeding
+accuracy bonus interpretation**.
 
 # Use Vercel Cron and Auth.js v5
 
@@ -263,7 +282,8 @@ Good decisions. Here's what those choices lock in architecturally, and what's st
 
 - Cron schedules live in **`vercel.json`**, not in application code
 - Each schedule calls a **protected API route** (e.g., `GET /api/cron/import-results`)
-- The route must be protected with a `CRON_SECRET` env var — Vercel injects an `Authorization` header on each call; the route validates it
+- The route must be protected with a `CRON_SECRET` env var — Vercel injects an `Authorization` header on each call; the
+  route validates it
 - `src/lib/import.ts` becomes a **plain async function** (no scheduler logic at all), called by the API route
 - The `npm run import:results` dev script should call the same function directly for local testing
 - **Execution time limit:** 60s on Hobby plan, 300s on Pro — the import function must complete within this
@@ -287,15 +307,19 @@ These three still need answers before the scoring and bracket logic can be writt
 
 Which definition?
 
-- **A — Ranking-position-based:** A school's "predicted round" is determined by their rank position (e.g., rank 1–4 → predicted champion, 5–8 → predicted finalist, etc. based on how many teams are in the bracket)
-- **B — Bracket-resolution-based:** After the bracket is resolved at lock time, the round where the school is predicted to be _eliminated_ is stored — that's their target round
+- **A — Ranking-position-based:** A school's "predicted round" is determined by their rank position (e.g., rank 1–4 →
+  predicted champion, 5–8 → predicted finalist, etc. based on how many teams are in the bracket)
+- **B — Bracket-resolution-based:** After the bracket is resolved at lock time, the round where the school is predicted
+  to be _eliminated_ is stored — that's their target round
 
 ### 2. `reseed_by_ranking` mode
 
 After a round's real results come in, do you:
 
-- **A — Full re-resolution:** Take all surviving teams, re-sort by original rank, and re-fill the remaining bracket slots fresh (winners/losers change for future rounds)
-- **B — Partial adjustment:** Keep the already-resolved predicted bracket, but swap out eliminated teams' future slots with the actual survivor
+- **A — Full re-resolution:** Take all surviving teams, re-sort by original rank, and re-fill the remaining bracket
+  slots fresh (winners/losers change for future rounds)
+- **B — Partial adjustment:** Keep the already-resolved predicted bracket, but swap out eliminated teams' future slots
+  with the actual survivor
 
 ### 3. First Four lock timing
 

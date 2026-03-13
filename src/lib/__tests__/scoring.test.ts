@@ -20,7 +20,7 @@ import type {
 /** Wrap a single-gender input into a full ScoringInput (mens and womens identical). */
 function bothGenders(
   gi: GenderScoringInput,
-  settings: CompetitionSettings = defaultSettings,
+  settings: CompetitionSettings = defaultSettings
 ): ScoringInput {
   return { mens: gi, womens: gi, settings };
 }
@@ -37,7 +37,7 @@ function resolve4Team(): ResolvedBracketData {
 /** Make a GenderScoringInput with fixed mode (original == current). */
 function fixedInput(
   bracket: ResolvedBracketData,
-  actualResults: ActualResultItem[],
+  actualResults: ActualResultItem[]
 ): GenderScoringInput {
   return { originalBracket: bracket, currentBracket: bracket, actualResults };
 }
@@ -81,8 +81,8 @@ describe("correct winner scoring", () => {
     const bracket = resolve4Team();
     // Both semis and the final all go as predicted
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
     ];
     const settings: CompetitionSettings = {
@@ -100,8 +100,8 @@ describe("correct winner scoring", () => {
     const bracket = resolve4Team();
     // A is eliminated in SF1 → CHAMP (predicted A beats C) earns 0 CW points
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "B", losingSchoolId: "A" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "B", losingSchoolId: "A" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "B", losingSchoolId: "C" },
     ];
     const settings: CompetitionSettings = {
@@ -126,7 +126,7 @@ describe("correct winner scoring", () => {
     // Now the full actual result: C beats D in SF2, B beats C in CHAMP
     const actual: ActualResultItem[] = [
       ...sf1Upset,
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "B", losingSchoolId: "C" },
     ];
     const gi: GenderScoringInput = {
@@ -162,10 +162,10 @@ describe("round advancement scoring", () => {
 
     // All games go as predicted
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "FF1",    winningSchoolId: "FF1a", losingSchoolId: "FF1b" },
-      { bracketSlotId: "FF2",    winningSchoolId: "FF2a", losingSchoolId: "FF2b" },
-      { bracketSlotId: "E1",     winningSchoolId: "FF1a", losingSchoolId: "E1b"  },
-      { bracketSlotId: "E2",     winningSchoolId: "FF2a", losingSchoolId: "E2b"  },
+      { bracketSlotId: "FF1", winningSchoolId: "FF1a", losingSchoolId: "FF1b" },
+      { bracketSlotId: "FF2", winningSchoolId: "FF2a", losingSchoolId: "FF2b" },
+      { bracketSlotId: "E1", winningSchoolId: "FF1a", losingSchoolId: "E1b" },
+      { bracketSlotId: "E2", winningSchoolId: "FF2a", losingSchoolId: "E2b" },
       { bracketSlotId: "CHAMP8", winningSchoolId: "FF1a", losingSchoolId: "FF2a" },
     ];
     const settings: CompetitionSettings = {
@@ -207,8 +207,8 @@ describe("round advancement scoring", () => {
     const rankMap = buildRankMap(["A", "B", "C", "D"]);
     // B upsets A; in reseed mode B now plays C in CHAMP
     const actualResults: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "B", losingSchoolId: "A" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "B", losingSchoolId: "A" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "B", losingSchoolId: "C" },
     ];
     const currentBracket = applyActualResults(bracket, actualResults, rankMap);
@@ -253,11 +253,51 @@ describe("round advancement scoring", () => {
   it("winning a ROUND_OF_64 game earns round_of_64 key (1:1 mapping, same as correctWinnerKey)", () => {
     // Build a minimal bracket that includes a ROUND_OF_64 game
     const slots = [
-      { id: "L1", round: "ROUND_OF_64" as const, slotIndex: 0, region: null, schoolId: "X", nextSlotId: "G1", feedingSlotIds: [] },
-      { id: "L2", round: "ROUND_OF_64" as const, slotIndex: 1, region: null, schoolId: "Y", nextSlotId: "G1", feedingSlotIds: [] },
-      { id: "G1", round: "ROUND_OF_64" as const, slotIndex: 0, region: null, schoolId: null, nextSlotId: "CHAMP_R", feedingSlotIds: ["L1", "L2"] },
-      { id: "L3", round: "CHAMPIONSHIP" as const, slotIndex: 0, region: null, schoolId: "Z", nextSlotId: "CHAMP_R", feedingSlotIds: [] },
-      { id: "CHAMP_R", round: "CHAMPIONSHIP" as const, slotIndex: 0, region: null, schoolId: null, nextSlotId: null, feedingSlotIds: ["G1", "L3"] },
+      {
+        id: "L1",
+        round: "ROUND_OF_64" as const,
+        slotIndex: 0,
+        region: null,
+        schoolId: "X",
+        nextSlotId: "G1",
+        feedingSlotIds: [],
+      },
+      {
+        id: "L2",
+        round: "ROUND_OF_64" as const,
+        slotIndex: 1,
+        region: null,
+        schoolId: "Y",
+        nextSlotId: "G1",
+        feedingSlotIds: [],
+      },
+      {
+        id: "G1",
+        round: "ROUND_OF_64" as const,
+        slotIndex: 0,
+        region: null,
+        schoolId: null,
+        nextSlotId: "CHAMP_R",
+        feedingSlotIds: ["L1", "L2"],
+      },
+      {
+        id: "L3",
+        round: "CHAMPIONSHIP" as const,
+        slotIndex: 0,
+        region: null,
+        schoolId: "Z",
+        nextSlotId: "CHAMP_R",
+        feedingSlotIds: [],
+      },
+      {
+        id: "CHAMP_R",
+        round: "CHAMPIONSHIP" as const,
+        slotIndex: 0,
+        region: null,
+        schoolId: null,
+        nextSlotId: null,
+        feedingSlotIds: ["G1", "L3"],
+      },
     ];
     const rankMap = buildRankMap(["X", "Y", "Z"]);
     const bracket = resolveInitialBracket({ gender: "MENS", slots, rankMap });
@@ -278,8 +318,8 @@ describe("round advancement scoring", () => {
   it("champion earns round_points for every game won, including championship", () => {
     const bracket = resolve4Team();
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
     ];
     const settings: CompetitionSettings = {
@@ -337,8 +377,8 @@ describe("seeding accuracy bonus", () => {
     const bracket = resolve4Team();
     // D predicted to exit FINAL_FOUR; D upsets C in SF2 and wins → exits later
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-      { bracketSlotId: "SF2",   winningSchoolId: "D", losingSchoolId: "C" }, // D advances past prediction
+      { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+      { bracketSlotId: "SF2", winningSchoolId: "D", losingSchoolId: "C" }, // D advances past prediction
     ];
     const settings: CompetitionSettings = {
       ...defaultSettings,
@@ -355,8 +395,8 @@ describe("seeding accuracy bonus", () => {
   it("championship_winner bonus awarded only to actual champion", () => {
     const bracket = resolve4Team();
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
     ];
     const settings: CompetitionSettings = {
@@ -375,8 +415,8 @@ describe("seeding accuracy bonus", () => {
   it("championship_runner_up bonus awarded only to actual runner-up", () => {
     const bracket = resolve4Team();
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
     ];
     const settings: CompetitionSettings = {
@@ -404,7 +444,7 @@ describe("seeding accuracy bonus", () => {
     // FF1a predicted to win championship, but loses in E1
     const actual: ActualResultItem[] = [
       { bracketSlotId: "FF1", winningSchoolId: "FF1a", losingSchoolId: "FF1b" },
-      { bracketSlotId: "E1",  winningSchoolId: "E1b",  losingSchoolId: "FF1a" },
+      { bracketSlotId: "E1", winningSchoolId: "E1b", losingSchoolId: "FF1a" },
     ];
     const settings: CompetitionSettings = {
       ...defaultSettings,
@@ -420,8 +460,8 @@ describe("seeding accuracy bonus", () => {
   it("seeding_bonus disabled: no bonus points awarded", () => {
     const bracket = resolve4Team();
     const actual: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
     ];
     const settings: CompetitionSettings = {
@@ -439,8 +479,8 @@ describe("seeding accuracy bonus", () => {
     const rankMap = buildRankMap(["A", "B", "C", "D"]);
     // B replaces A in championship (A is eliminated by B in SF1)
     const actualResults: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "B", losingSchoolId: "A" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "B", losingSchoolId: "A" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "B", losingSchoolId: "C" },
     ];
     const currentBracket = applyActualResults(bracket, actualResults, rankMap);
@@ -510,8 +550,8 @@ describe("lock mode guard", () => {
 describe("combined scoring and tiebreaker", () => {
   const bracket = resolve4Team();
   const allCorrect: ActualResultItem[] = [
-    { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-    { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+    { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+    { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
     { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
   ];
 
@@ -525,10 +565,10 @@ describe("combined scoring and tiebreaker", () => {
         rankMap: buildRankMap(["B", "A", "C", "D"]),
       }),
       [
-        { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-        { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+        { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+        { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
         { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
-      ],
+      ]
     );
     const settings: CompetitionSettings = {
       ...defaultSettings,
@@ -553,7 +593,7 @@ describe("combined scoring and tiebreaker", () => {
         slots: buildMinimal4TeamSlots(),
         rankMap: buildRankMap(["A", "B", "C", "D"]),
       }),
-      [{ bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" }],
+      [{ bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" }]
     );
     const result = scoreEntry({ mens: mensGI, womens: womensGI, settings });
     expect(result.tiebreaker).toBe(Math.abs(result.mensScore - result.womensScore));
@@ -576,7 +616,7 @@ describe("combined scoring and tiebreaker", () => {
         slots: buildMinimal4TeamSlots(),
         rankMap: buildRankMap(["A", "B", "C", "D"]),
       }),
-      partialActual,
+      partialActual
     );
     const unbalanced = scoreEntry({ mens: gi, womens: womensPartial, settings });
     expect(balanced.tiebreaker).toBeLessThan(unbalanced.tiebreaker);
@@ -604,14 +644,6 @@ describe("combined scoring and tiebreaker", () => {
   it("breakdown.mens.total + breakdown.womens.total equals totalScore", () => {
     const gi = fixedInput(bracket, allCorrect);
     const result = scoreEntry(bothGenders(gi));
-    expect(result.breakdown.mens.total + result.breakdown.womens.total).toBe(
-      result.totalScore,
-    );
+    expect(result.breakdown.mens.total + result.breakdown.womens.total).toBe(result.totalScore);
   });
 });
-
-
-
-
-
-

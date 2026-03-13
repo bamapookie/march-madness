@@ -57,7 +57,7 @@ export function RankingEditor({ listId, initialName, initialEntries, isLocked, l
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   // ── Filtered view (DnD always operates on full list) ───────────────────
@@ -82,22 +82,19 @@ export function RankingEditor({ listId, initialName, initialEntries, isLocked, l
     setActiveId(event.active.id as string);
   }, []);
 
-  const handleDragEnd = useCallback(
-    (event: DragEndEvent) => {
-      setActiveId(null);
-      const { active, over } = event;
-      if (!over || active.id === over.id) return;
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
 
-      setEntries((current) => {
-        const oldIndex = current.findIndex((e) => e.id === active.id);
-        const newIndex = current.findIndex((e) => e.id === over.id);
-        return arrayMove(current, oldIndex, newIndex);
-      });
-      setIsDirty(true);
-      setSaveSuccess(false);
-    },
-    [],
-  );
+    setEntries((current) => {
+      const oldIndex = current.findIndex((e) => e.id === active.id);
+      const newIndex = current.findIndex((e) => e.id === over.id);
+      return arrayMove(current, oldIndex, newIndex);
+    });
+    setIsDirty(true);
+    setSaveSuccess(false);
+  }, []);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
@@ -111,7 +108,10 @@ export function RankingEditor({ listId, initialName, initialEntries, isLocked, l
         body: JSON.stringify({ orderedSchoolIds: entries.map((e) => e.school.id) }),
       });
 
-      const json = (await res.json()) as { data: { entries: RankingEntryWithSchool[] } | null; error: string | null };
+      const json = (await res.json()) as {
+        data: { entries: RankingEntryWithSchool[] } | null;
+        error: string | null;
+      };
 
       if (!res.ok || json.error) {
         setSaveError(json.error ?? "Failed to save rankings.");
@@ -154,10 +154,10 @@ export function RankingEditor({ listId, initialName, initialEntries, isLocked, l
       setName(trimmed);
       router.refresh();
     },
-    [name, listId, router],
+    [name, listId, router]
   );
 
-  const activeEntry = activeId ? entries.find((e) => e.id === activeId) ?? null : null;
+  const activeEntry = activeId ? (entries.find((e) => e.id === activeId) ?? null) : null;
 
   const lockDate = new Date(lockAt);
   const lockLabel = lockDate.toLocaleDateString("en-US", {
@@ -199,7 +199,7 @@ export function RankingEditor({ listId, initialName, initialEntries, isLocked, l
               className={[
                 "text-left text-2xl font-bold text-zinc-900 dark:text-zinc-50",
                 !isLocked &&
-                  "cursor-pointer rounded px-1 -ml-1 hover:bg-zinc-100 dark:hover:bg-zinc-800",
+                  "-ml-1 cursor-pointer rounded px-1 hover:bg-zinc-100 dark:hover:bg-zinc-800",
               ]
                 .filter(Boolean)
                 .join(" ")}
@@ -310,7 +310,7 @@ export function RankingEditor({ listId, initialName, initialEntries, isLocked, l
       {/* ── List ── */}
       <div className="overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-800">
         {/* Column headers */}
-        <div className="flex items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500">
+        <div className="flex items-center gap-3 border-b border-zinc-200 bg-zinc-50 px-4 py-2 text-xs font-medium tracking-wide text-zinc-500 uppercase dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-500">
           <span className="w-8 shrink-0 text-right">#</span>
           <span className="w-5 shrink-0" />
           <span className="flex-1">School</span>
@@ -385,5 +385,3 @@ export function RankingEditor({ listId, initialName, initialEntries, isLocked, l
     </div>
   );
 }
-
-

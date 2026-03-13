@@ -28,9 +28,7 @@ const ROUND_ORDER: Round[] = [
  *
  * Pure function — no DB access, no async I/O.
  */
-export function resolveInitialBracket(
-  input: BracketResolutionInput,
-): ResolvedBracketData {
+export function resolveInitialBracket(input: BracketResolutionInput): ResolvedBracketData {
   const { gender, slots, rankMap } = input;
 
   // Tracks which school currently occupies each slot
@@ -44,9 +42,7 @@ export function resolveInitialBracket(
   for (const slot of slots) {
     const n = slot.feedingSlotIds.length;
     if (n !== 0 && n !== 2) {
-      throw new Error(
-        `Slot ${slot.id} has ${n} feeding slots; expected 0 or 2`,
-      );
+      throw new Error(`Slot ${slot.id} has ${n} feeding slots; expected 0 or 2`);
     }
   }
 
@@ -70,7 +66,7 @@ export function resolveInitialBracket(
     for (const slot of roundSlots) {
       if (slot.feedingSlotIds.length !== 2) {
         throw new Error(
-          `Slot ${slot.id} has ${slot.feedingSlotIds.length} feeding slots; expected 0 or 2`,
+          `Slot ${slot.id} has ${slot.feedingSlotIds.length} feeding slots; expected 0 or 2`
         );
       }
       const [topSlotId, bottomSlotId] = slot.feedingSlotIds;
@@ -80,12 +76,12 @@ export function resolveInitialBracket(
 
       if (topContestantId === undefined) {
         throw new Error(
-          `No occupant found for slot ${topSlotId} — possible missing round in bracket data`,
+          `No occupant found for slot ${topSlotId} — possible missing round in bracket data`
         );
       }
       if (bottomContestantId === undefined) {
         throw new Error(
-          `No occupant found for slot ${bottomSlotId} — possible missing round in bracket data`,
+          `No occupant found for slot ${bottomSlotId} — possible missing round in bracket data`
         );
       }
 
@@ -100,16 +96,13 @@ export function resolveInitialBracket(
       }
       if (topRank === bottomRank) {
         throw new Error(
-          `Rank tie between ${topContestantId} and ${bottomContestantId} at rank ${topRank}`,
+          `Rank tie between ${topContestantId} and ${bottomContestantId} at rank ${topRank}`
         );
       }
 
-      const predictedWinnerId =
-        topRank < bottomRank ? topContestantId : bottomContestantId;
+      const predictedWinnerId = topRank < bottomRank ? topContestantId : bottomContestantId;
       const predictedLoserId =
-        predictedWinnerId === topContestantId
-          ? bottomContestantId
-          : topContestantId;
+        predictedWinnerId === topContestantId ? bottomContestantId : topContestantId;
 
       games.push({
         slotId: slot.id,
@@ -136,9 +129,7 @@ export function resolveInitialBracket(
   }
 
   // 4. Find the championship slot to identify the champion
-  const champSlot = slots.find(
-    (s) => s.round === "CHAMPIONSHIP" && s.feedingSlotIds.length === 2,
-  );
+  const champSlot = slots.find((s) => s.round === "CHAMPIONSHIP" && s.feedingSlotIds.length === 2);
   if (!champSlot) {
     throw new Error(`No championship slot found for gender ${gender}`);
   }
@@ -167,7 +158,7 @@ export function resolveInitialBracket(
 export function applyActualResults(
   resolved: ResolvedBracketData,
   actualResults: ActualResultItem[],
-  rankMap: RankMap,
+  rankMap: RankMap
 ): ResolvedBracketData {
   // 1. Build lookup maps from actual results
   const actualWinnerBySlotId = new Map<string, string>();
@@ -180,9 +171,7 @@ export function applyActualResults(
   // 2. Build currentOccupantMap: who actually occupies each slot right now
   //    Start from leaf positions, then follow actual results (or predicted winners
   //    for games not yet played).
-  const currentOccupantMap = new Map<string, string>(
-    Object.entries(resolved.leafOccupants),
-  );
+  const currentOccupantMap = new Map<string, string>(Object.entries(resolved.leafOccupants));
 
   // Process in round order so upstream slots are resolved before downstream ones
   for (const game of resolved.games) {
@@ -202,9 +191,7 @@ export function applyActualResults(
 
   // 4. Rebuild games, re-evaluating any matchup where a contestant changed
   //    We need a mutable occupant map as we process each game in order.
-  const rebuildOccupantMap = new Map<string, string>(
-    Object.entries(resolved.leafOccupants),
-  );
+  const rebuildOccupantMap = new Map<string, string>(Object.entries(resolved.leafOccupants));
 
   for (let i = 0; i < newGames.length; i++) {
     const G = newGames[i];
@@ -226,8 +213,7 @@ export function applyActualResults(
       continue;
     }
 
-    const changed =
-      topActual !== G.topContestantId || bottomActual !== G.bottomContestantId;
+    const changed = topActual !== G.topContestantId || bottomActual !== G.bottomContestantId;
 
     if (changed) {
       const topRank = rankMap[topActual];
@@ -239,8 +225,7 @@ export function applyActualResults(
         continue;
       }
 
-      const newWinner =
-        topRank < bottomRank ? topActual : bottomActual;
+      const newWinner = topRank < bottomRank ? topActual : bottomActual;
       const newLoser = newWinner === topActual ? bottomActual : topActual;
 
       newGames[i] = {
@@ -262,8 +247,7 @@ export function applyActualResults(
       newPredictedExitRound[game.predictedLoserId] = "CHAMPIONSHIP_RUNNER_UP";
       newPredictedExitRound[game.predictedWinnerId] = "CHAMPIONSHIP_WINNER";
     } else {
-      newPredictedExitRound[game.predictedLoserId] =
-        game.round as PredictedExitRound;
+      newPredictedExitRound[game.predictedLoserId] = game.round as PredictedExitRound;
     }
   }
 
@@ -278,8 +262,3 @@ export function applyActualResults(
     championId: newChampionId,
   };
 }
-
-
-
-
-

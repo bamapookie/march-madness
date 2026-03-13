@@ -26,7 +26,9 @@ export default async function RankingPage() {
     lockMode: list.lockMode,
     entryCount: list._count.entries,
     isLocked: activeSeason ? isRankingListLocked(activeSeason, list.lockMode) : false,
-    lockAt: activeSeason ? getLockAt(activeSeason, list.lockMode).toISOString() : new Date().toISOString(),
+    lockAt: activeSeason
+      ? getLockAt(activeSeason, list.lockMode).toISOString()
+      : new Date().toISOString(),
     createdAt: list.createdAt.toISOString(),
     updatedAt: list.updatedAt.toISOString(),
   }));

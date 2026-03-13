@@ -105,9 +105,9 @@ describe("resolveInitialBracket", () => {
   it("throws on unknown school in rankMap", () => {
     const slots = buildMinimal4TeamSlots();
     const rankMap = buildRankMap(["A", "B", "C"]); // D is missing
-    expect(() =>
-      resolveInitialBracket({ gender: "MENS", slots, rankMap }),
-    ).toThrow(/School D not found in rank map/);
+    expect(() => resolveInitialBracket({ gender: "MENS", slots, rankMap })).toThrow(
+      /School D not found in rank map/
+    );
   });
 
   it("throws on malformed slot with 1 feedingSlotId", () => {
@@ -123,9 +123,9 @@ describe("resolveInitialBracket", () => {
       feedingSlotIds: ["SF1"],
     });
     const rankMap = buildRankMap(["A", "B", "C", "D"]);
-    expect(() =>
-      resolveInitialBracket({ gender: "MENS", slots, rankMap }),
-    ).toThrow(/1 feeding slots; expected 0 or 2/);
+    expect(() => resolveInitialBracket({ gender: "MENS", slots, rankMap })).toThrow(
+      /1 feeding slots; expected 0 or 2/
+    );
   });
 
   it("deterministic output for same inputs", () => {
@@ -158,8 +158,8 @@ describe("applyActualResults", () => {
   it("returns structurally equal bracket when all actual results match predictions", () => {
     const { resolved, rankMap } = makeResolved();
     const actualResults: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "A", losingSchoolId: "B" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "A", losingSchoolId: "B" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
       { bracketSlotId: "CHAMP", winningSchoolId: "A", losingSchoolId: "C" },
     ];
     const updated = applyActualResults(resolved, actualResults, rankMap);
@@ -252,7 +252,7 @@ describe("applyActualResults", () => {
     applyActualResults(
       resolved,
       [{ bracketSlotId: "SF1", winningSchoolId: "B", losingSchoolId: "A" }],
-      rankMap,
+      rankMap
     );
     expect(resolved.championId).toBe(originalChampId);
     expect(JSON.stringify(resolved.games)).toBe(originalGames);
@@ -262,12 +262,11 @@ describe("applyActualResults", () => {
     const { resolved, rankMap } = makeResolved();
     // Full tournament: B upsets A in SF1, C beats D in SF2, B beats C in CHAMP
     const actualResults: ActualResultItem[] = [
-      { bracketSlotId: "SF1",   winningSchoolId: "B", losingSchoolId: "A" },
-      { bracketSlotId: "SF2",   winningSchoolId: "C", losingSchoolId: "D" },
+      { bracketSlotId: "SF1", winningSchoolId: "B", losingSchoolId: "A" },
+      { bracketSlotId: "SF2", winningSchoolId: "C", losingSchoolId: "D" },
     ];
     const updated = applyActualResults(resolved, actualResults, rankMap);
     // CHAMP game: B(rank 2) vs C(rank 3) → B wins → championId = B
     expect(updated.championId).toBe("B");
   });
 });
-

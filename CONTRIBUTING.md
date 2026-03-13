@@ -1,12 +1,13 @@
 # Contributing to March Madness Bracket App
 
-Thank you for your interest in contributing! This document explains how to report issues, propose features, and submit pull requests.
+Thank you for your interest in contributing! This document explains how to report issues, propose features, and submit
+pull requests.
 
 ---
 
 ## Code of Conduct
 
-Be respectful. Harassment, discrimination, or abusive behaviour of any kind will not be tolerated.
+Be respectful. Harassment, discrimination, or abusive behavior of any kind will not be tolerated.
 
 ---
 
@@ -25,6 +26,7 @@ Be respectful. Harassment, discrimination, or abusive behaviour of any kind will
 ## Suggesting Features
 
 Open an issue with the `enhancement` label and describe:
+
 - The problem you're trying to solve
 - Your proposed solution
 - Any alternatives you considered
@@ -47,6 +49,7 @@ npm run dev
 ## Pull Request Process
 
 1. **Fork** the repository and create a feature branch from `main`:
+
    ```bash
    git checkout -b feature/your-feature-name
    ```
@@ -58,6 +61,7 @@ npm run dev
    - API routes return `{ data, error }` shaped responses
 
 3. **Keep code clean:**
+
    ```bash
    npm run lint          # must pass with no errors
    npm run typecheck     # must pass with no errors
@@ -67,6 +71,7 @@ npm run dev
 4. **Write or update tests** for any changed logic in `/src/lib/`.
 
 5. **Commit with clear messages** — prefer imperative mood:
+
    ```
    Add reseed-by-ranking bracket resolution
    Fix scoring engine for First Four games
@@ -83,20 +88,19 @@ npm run dev
 
 ## Project Structure Cheat-Sheet
 
-| Path | Purpose |
-|------|---------|
-| `src/lib/bracket.ts` | Pure bracket resolution logic — unit-testable, no DB calls |
-| `src/lib/scoring.ts` | Pure scoring logic — unit-testable, no DB calls |
-| `src/lib/import.ts` | ESPN API import — plain async function, no scheduler |
-| `src/lib/db.ts` | Prisma client singleton |
-| `src/lib/auth.ts` | Auth.js v5 config |
-| `src/app/api/` | Next.js API route handlers |
-| `src/types/` | Shared TypeScript types |
-| `prisma/schema.prisma` | Database schema |
+| Path                   | Purpose                                                    |
+| ---------------------- | ---------------------------------------------------------- |
+| `src/lib/bracket.ts`   | Pure bracket resolution logic — unit-testable, no DB calls |
+| `src/lib/scoring.ts`   | Pure scoring logic — unit-testable, no DB calls            |
+| `src/lib/import.ts`    | ESPN API import — plain async function, no scheduler       |
+| `src/lib/db.ts`        | Prisma client singleton                                    |
+| `src/lib/auth.ts`      | Auth.js v5 config                                          |
+| `src/app/api/`         | Next.js API route handlers                                 |
+| `src/types/`           | Shared TypeScript types                                    |
+| `prisma/schema.prisma` | Database schema                                            |
 
 ---
 
 ## Questions?
 
 Open a [discussion](../../discussions) or an issue labelled `question`.
-

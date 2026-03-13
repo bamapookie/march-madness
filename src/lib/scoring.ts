@@ -12,7 +12,6 @@ import type {
   SeedingBonusPointMap,
 } from "@/types";
 
-
 // ─── Internal helpers ──────────────────────────────────────────────────────────
 
 /**
@@ -22,12 +21,12 @@ import type {
  */
 function roundAdvancementKey(round: Round): keyof RoundPointMap {
   const map: Record<Round, keyof RoundPointMap> = {
-    FIRST_FOUR:   "first_four",
-    ROUND_OF_64:  "round_of_64",
-    ROUND_OF_32:  "round_of_32",
-    SWEET_16:     "sweet_16",
-    ELITE_8:      "elite_8",
-    FINAL_FOUR:   "final_four",
+    FIRST_FOUR: "first_four",
+    ROUND_OF_64: "round_of_64",
+    ROUND_OF_32: "round_of_32",
+    SWEET_16: "sweet_16",
+    ELITE_8: "elite_8",
+    FINAL_FOUR: "final_four",
     CHAMPIONSHIP: "championship",
   };
   return map[round];
@@ -44,18 +43,16 @@ function correctWinnerKey(round: Round): keyof RoundPointMap {
 /**
  * Maps a PredictedExitRound to the seeding_bonus_points key.
  */
-function predictedExitToSeedingBonusKey(
-  exit: PredictedExitRound,
-): keyof SeedingBonusPointMap {
+function predictedExitToSeedingBonusKey(exit: PredictedExitRound): keyof SeedingBonusPointMap {
   const map: Record<PredictedExitRound, keyof SeedingBonusPointMap> = {
-    FIRST_FOUR:            "first_four",
-    ROUND_OF_64:           "round_of_64",
-    ROUND_OF_32:           "round_of_32",
-    SWEET_16:              "sweet_16",
-    ELITE_8:               "elite_8",
-    FINAL_FOUR:            "final_four",
+    FIRST_FOUR: "first_four",
+    ROUND_OF_64: "round_of_64",
+    ROUND_OF_32: "round_of_32",
+    SWEET_16: "sweet_16",
+    ELITE_8: "elite_8",
+    FINAL_FOUR: "final_four",
     CHAMPIONSHIP_RUNNER_UP: "championship_runner_up",
-    CHAMPIONSHIP_WINNER:   "championship_winner",
+    CHAMPIONSHIP_WINNER: "championship_winner",
   };
   return map[exit];
 }
@@ -66,7 +63,7 @@ function predictedExitToSeedingBonusKey(
  */
 function isExcludedByLockMode(
   round: Round | PredictedExitRound,
-  lockMode: CompetitionSettings["lock_mode"],
+  lockMode: CompetitionSettings["lock_mode"]
 ): boolean {
   return lockMode === "before_round_of_64" && round === "FIRST_FOUR";
 }
@@ -79,14 +76,16 @@ function isExcludedByLockMode(
 function computeActualExit(
   schoolId: string,
   actualResultBySlotId: Map<string, ActualResultItem>,
-  games: ResolvedGame[],
+  games: ResolvedGame[]
 ): PredictedExitRound | null {
   for (const game of games) {
     const result = actualResultBySlotId.get(game.slotId);
     if (result === undefined) continue;
 
     if (result.losingSchoolId === schoolId) {
-      return game.round === "CHAMPIONSHIP" ? "CHAMPIONSHIP_RUNNER_UP" : game.round as PredictedExitRound;
+      return game.round === "CHAMPIONSHIP"
+        ? "CHAMPIONSHIP_RUNNER_UP"
+        : (game.round as PredictedExitRound);
     }
     if (result.winningSchoolId === schoolId && game.round === "CHAMPIONSHIP") {
       return "CHAMPIONSHIP_WINNER";
@@ -97,10 +96,7 @@ function computeActualExit(
 
 // ─── scoreGender ──────────────────────────────────────────────────────────────
 
-function scoreGender(
-  input: GenderScoringInput,
-  settings: CompetitionSettings,
-): ScoreBreakdown {
+function scoreGender(input: GenderScoringInput, settings: CompetitionSettings): ScoreBreakdown {
   const { originalBracket, currentBracket, actualResults } = input;
 
   // Index actual results by slot id for O(1) lookup
@@ -131,13 +127,8 @@ function scoreGender(
     // Round advancement — uses originalBracket only
     if (settings.scoring_mode.includes("round_advancement")) {
       const advKey = roundAdvancementKey(G.round);
-      const originalGame = originalBracket.games.find(
-        (g) => g.slotId === G.slotId,
-      );
-      if (
-        originalGame !== undefined &&
-        originalGame.predictedWinnerId === result.winningSchoolId
-      ) {
+      const originalGame = originalBracket.games.find((g) => g.slotId === G.slotId);
+      if (originalGame !== undefined && originalGame.predictedWinnerId === result.winningSchoolId) {
         roundAdvancement += settings.round_points[advKey];
       }
     }
@@ -145,18 +136,12 @@ function scoreGender(
 
   // ── PER-SCHOOL SEEDING ACCURACY BONUS ──────────────────────────────────────
   if (settings.seeding_bonus_enabled) {
-    for (const [schoolId, predictedExit] of Object.entries(
-      originalBracket.predictedExitRound,
-    )) {
+    for (const [schoolId, predictedExit] of Object.entries(originalBracket.predictedExitRound)) {
       if (isExcludedByLockMode(predictedExit as Round, settings.lock_mode)) {
         continue;
       }
 
-      const actualExit = computeActualExit(
-        schoolId,
-        actualResultBySlotId,
-        originalBracket.games,
-      );
+      const actualExit = computeActualExit(schoolId, actualResultBySlotId, originalBracket.games);
       if (actualExit !== null && actualExit === predictedExit) {
         const bonusKey = predictedExitToSeedingBonusKey(predictedExit);
         seedingBonus += settings.seeding_bonus_points[bonusKey];
@@ -196,4 +181,3 @@ export function scoreEntry(input: ScoringInput): ScoreResult {
 
 // Re-export helpers used in tests (via named exports for testability)
 export { computeActualExit, isExcludedByLockMode, roundAdvancementKey, correctWinnerKey };
-

@@ -80,6 +80,3 @@ export default async function RankingEditPage({ params }: Props) {
     </main>
   );
 }
-
-
-

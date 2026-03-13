@@ -2,16 +2,19 @@
 
 ## Project Overview
 
-A web app where users rank all schools in the NCAA Men's and Women's Basketball Tournaments in a single unified list. That one ranking list automatically resolves into both a Men's and Women's bracket — the higher-ranked school always wins every matchup. No game-by-game picks.
+A web app where users rank all schools in the NCAA Men's and Women's Basketball Tournaments in a single unified list.
+That one ranking list automatically resolves into both a Men's and Women's bracket — the higher-ranked school always
+wins every matchup. No game-by-game picks.
 
-Users compete in groups (competitions) where organizers configure scoring, reseeding rules, and entry limits. The app scores both brackets together as a combined total.
+Users compete in groups (competitions) where organizers configure scoring, reseeding rules, and entry limits. The app
+scores both brackets together as a combined total.
 
 ---
 
 ## Milestones
 
-Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round of 64 begins **~March 20**.
-Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can ship during the tournament.
+Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round of 64 begins **~March 20**. Milestones
+0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can ship during the tournament.
 
 ### 0.1.0 — Foundation ✅ _complete_
 
@@ -151,10 +154,9 @@ npm run import:results
 npm run seed:test         # Seed a 2026 season + 53 test schools (local dev only)
 ```
 
-> **Prisma v7 notes:** The schema has no `datasource url` — the connection string lives in
-> `prisma.config.ts` (used by CLI) and is passed at runtime via `@prisma/adapter-pg` in
-> `src/lib/db.ts`. The generated client is in `src/generated/prisma/` (gitignored) and is
-> rebuilt on every deploy via the `build` script.
+> **Prisma v7 notes:** The schema has no `datasource url` — the connection string lives in `prisma.config.ts` (used by
+> CLI) and is passed at runtime via `@prisma/adapter-pg` in `src/lib/db.ts`. The generated client is in
+> `src/generated/prisma/` (gitignored) and is rebuilt on every deploy via the `build` script.
 
 ---
 
@@ -186,26 +188,40 @@ notifications          — In-app notifications (polled client-side)
 
 ## Core Domain Concepts
 
-**Ranking list:** The user's ordered list of all tournament schools. This IS their bracket prediction. No separate picks needed.
+**Ranking list:** The user's ordered list of all tournament schools. This IS their bracket prediction. No separate picks
+needed.
 
-**Ranking list pre-population:** When a user creates a new ranking list, it is pre-filled with all tournament schools sorted ascending by their average NCAA seed across both tournaments. Schools appearing in both Men's and Women's tournaments use the average of their two seeds; schools in only one tournament use that seed directly. Ties are broken alphabetically by school name. Users may then reorder from this starting point.
+**Ranking list pre-population:** When a user creates a new ranking list, it is pre-filled with all tournament schools
+sorted ascending by their average NCAA seed across both tournaments. Schools appearing in both Men's and Women's
+tournaments use the average of their two seeds; schools in only one tournament use that seed directly. Ties are broken
+alphabetically by school name. Users may then reorder from this starting point.
 
 - If `lock_mode = "before_first_four"`: the list includes all 68 Men's + 68 Women's teams (up to 136 schools total)
-- If `lock_mode = "before_round_of_64"`: the list includes only the 64 Round of 64 qualifiers per gender (up to 128 schools total); First Four results must be imported before ranking lists can be created
+- If `lock_mode = "before_round_of_64"`: the list includes only the 64 Round of 64 qualifiers per gender (up to 128
+  schools total); First Four results must be imported before ranking lists can be created
 
-**Bracket resolution:** Given a ranking list and the official NCAA bracket slots, simulate every game by advancing the school with the lower rank number (higher rank = smaller number). Includes First Four play-in games.
+**Bracket resolution:** Given a ranking list and the official NCAA bracket slots, simulate every game by advancing the
+school with the lower rank number (higher rank = smaller number). Includes First Four play-in games.
 
-**Fixed bracket (`reseed_mode = "fixed"`):** The predicted bracket is never updated. When real results deviate from predictions, eliminated teams' future game slots simply earn no points.
+**Fixed bracket (`reseed_mode = "fixed"`):** The predicted bracket is never updated. When real results deviate from
+predictions, eliminated teams' future game slots simply earn no points.
 
-**Reseeding (by original ranking):** When real results eliminate a team that was predicted to appear in a future matchup, the actual advancing team replaces them in that slot. The matchup winner is then re-evaluated by comparing the two teams' rank positions in the user's original ranking. Only matchups involving at least one eliminated team are updated; matchups where both predicted teams are still alive retain their original prediction.
+**Reseeding (by original ranking):** When real results eliminate a team that was predicted to appear in a future
+matchup, the actual advancing team replaces them in that slot. The matchup winner is then re-evaluated by comparing the
+two teams' rank positions in the user's original ranking. Only matchups involving at least one eliminated team are
+updated; matchups where both predicted teams are still alive retain their original prediction.
 
-**Scoring — round advancement:** Points for each game a school wins in rounds where the original bracket predicted them to win, based on original bracket resolution. Uses the same per-round map semantics as Correct Winner. Gives additional scoring weight to original predictions independently of how reseeding updates game-slot matchups.
+**Scoring — round advancement:** Points for each game a school wins in rounds where the original bracket predicted them
+to win, based on original bracket resolution. Uses the same per-round map semantics as Correct Winner. Gives additional
+scoring weight to original predictions independently of how reseeding updates game-slot matchups.
 
 **Scoring — correct winner:** Points for correctly predicting the winner of each specific game.
 
-**Seeding accuracy bonus:** Bonus points when a school exits the tournament in the exact round the user's resolved bracket predicted — including a separate bonus for correctly predicting the championship winner.
+**Seeding accuracy bonus:** Bonus points when a school exits the tournament in the exact round the user's resolved
+bracket predicted — including a separate bonus for correctly predicting the championship winner.
 
-**Tiebreaker:** When scores are tied, the user whose Men's and Women's bracket scores have the smaller absolute difference wins. Rewards balanced knowledge across both tournaments.
+**Tiebreaker:** When scores are tied, the user whose Men's and Women's bracket scores have the smaller absolute
+difference wins. Rewards balanced knowledge across both tournaments.
 
 ---
 
@@ -275,7 +291,10 @@ type SeedingBonusPointMap = {
 1. Load official `bracket_slots` for the season and gender
 2. Resolve First Four: compare rank positions of the two schools in each play-in slot; lower number advances
 3. Resolve each subsequent round the same way
-4. If `reseed_mode = "reseed_by_ranking"`: after each round's actual results import, scan all future predicted matchups. For any matchup where one or more teams have been eliminated in reality, replace the eliminated team with the actual advancing team and re-evaluate the matchup winner by comparing the two teams' rank positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
+4. If `reseed_mode = "reseed_by_ranking"`: after each round's actual results import, scan all future predicted matchups.
+   For any matchup where one or more teams have been eliminated in reality, replace the eliminated team with the actual
+   advancing team and re-evaluate the matchup winner by comparing the two teams' rank positions in the user's original
+   ranking. Matchups where both predicted teams are still alive are not changed.
 5. Store the resolved bracket — do not recompute on every read
 
 ---
@@ -287,28 +306,54 @@ type SeedingBonusPointMap = {
 - Cache results in a scores summary table; do not recompute on every leaderboard read
 - Tiebreaker value = `Math.abs(mens_score - womens_score)` — lower is better
 - Points are earned based on `competition_settings` for each competition entry:
-  - When `lock_mode = "before_round_of_64"`: no points are awarded for First Four games in any scoring mode; `first_four` values in all point maps are ignored.
+  - When `lock_mode = "before_round_of_64"`: no points are awarded for First Four games in any scoring mode;
+    `first_four` values in all point maps are ignored.
   - Correct Winner Points: awarded for each game where the predicted winner matches the actual winner.
-    - This is the traditional method of scoring points for tournament brackets, and thus **should** be worth more than Round Advancement Bonus or Seeding Bonus to reward correct game-by-game predictions.  The organizer is under no obligation to follow this recommendation.
-    - Organizer sets the points for each round in the competition settings, so a correct pick in the championship game can be worth more than a correct pick in the first round.
-    - If a participant's bracket predicted School A to beat School B in the Round of 64, and that game actually resulted in School A winning, the participant earns points for that correct prediction.
-    - When `reseed_mode = "fixed"`, scoring predictions are not updated, so a matchup where an eliminated team was predicted to win will simply not earn points. This is the traditional method of scoring brackets, where if a selected team is eliminated, all of that team's future predicted matchups are wrong and earn no points.
-    - If reseeding is enabled, and a participant's predicted winner of a matchup is eliminated, later rounds are recalculated based on the surviving teams, but points for correct winners are still awarded based on the original rankings.
-      - For example, if a participant predicted an 8 team bracket with the official seeds ranked 5, 6, 2, 1, 3, 4, 8, 7, and the 8 seed beats the 1 seed, and the 4 seed beats the 5 seed, then the 8 seed will play the 4 seed in the next round. Since the participant originally ranked the 4 seed higher than the 8 seed, the participant's predicted winner of that matchup would be the 4 seed. If the 4 seed then beats the 8 seed, the participant would earn points for that matchup since their predicted winner (the 4 seed) won.
-  - Seeding Accuracy Bonus: awarded when a team exits the tournament in the exact round predicted by the user's resolved bracket.
-    - The predicted exit round is determined by running bracket resolution against the user's ranking — whichever round a team is predicted to lose in is their target round.
-    - "Winning the championship" is its own exit point: a team predicted to win it all earns `championship_winner` bonus points only if they actually win the championship.
-    - A team predicted to lose in the championship game earns `championship_runner_up` bonus points only if they are the actual runner-up.
+    - This is the traditional method of scoring points for tournament brackets, and thus **should** be worth more than
+      Round Advancement Bonus or Seeding Bonus to reward correct game-by-game predictions. The organizer is under no
+      obligation to follow this recommendation.
+    - Organizer sets the points for each round in the competition settings, so a correct pick in the championship game
+      can be worth more than a correct pick in the first round.
+    - If a participant's bracket predicted School A to beat School B in the Round of 64, and that game actually resulted
+      in School A winning, the participant earns points for that correct prediction.
+    - When `reseed_mode = "fixed"`, scoring predictions are not updated, so a matchup where an eliminated team was
+      predicted to win will simply not earn points. This is the traditional method of scoring brackets, where if a
+      selected team is eliminated, all of that team's future predicted matchups are wrong and earn no points.
+    - If reseeding is enabled, and a participant's predicted winner of a matchup is eliminated, later rounds are
+      recalculated based on the surviving teams, but points for correct winners are still awarded based on the original
+      rankings.
+      - For example, if a participant predicted an 8 team bracket with the official seeds ranked 5, 6, 2, 1, 3, 4, 8, 7,
+        and the 8 seed beats the 1 seed, and the 4 seed beats the 5 seed, then the 8 seed will play the 4 seed in the
+        next round. Since the participant originally ranked the 4 seed higher than the 8 seed, the participant's
+        predicted winner of that matchup would be the 4 seed. If the 4 seed then beats the 8 seed, the participant would
+        earn points for that matchup since their predicted winner (the 4 seed) won.
+  - Seeding Accuracy Bonus: awarded when a team exits the tournament in the exact round predicted by the user's resolved
+    bracket.
+    - The predicted exit round is determined by running bracket resolution against the user's ranking — whichever round
+      a team is predicted to lose in is their target round.
+    - "Winning the championship" is its own exit point: a team predicted to win it all earns `championship_winner` bonus
+      points only if they actually win the championship.
+    - A team predicted to lose in the championship game earns `championship_runner_up` bonus points only if they are the
+      actual runner-up.
     - Requires that the team NOT advance past the round predicted for elimination.
-    - For example, if a user ranked a team #1 (predicting they win the championship) but they lose in the Elite 8, they would NOT earn the seeding accuracy bonus.
+    - For example, if a user ranked a team #1 (predicting they win the championship) but they lose in the Elite 8, they
+      would NOT earn the seeding accuracy bonus.
     - It is recommended that this value be less than the correct winner points, but not required.
     - This bonus is based on the original ranking position of the teams, not on reseeded teams.
-  - Round Advancement Bonus: awarded for each game a team wins, for rounds where the original bracket predicted them to win.
-    - The predicted exit round is determined by the original bracket resolution against the user's ranking — the round a team was predicted to *lose* in. Points are earned for each game won in rounds before that predicted exit.
-    - Uses the same per-round map semantics as Correct Winner Points: `round_points.round_of_64` is earned for winning a Round of 64 game, `round_points.round_of_32` for winning a Round of 32 game, and so on — but only for rounds where the team was originally predicted to win.
-    - A team predicted to lose in the Elite 8 earns Round of 64 + Round of 32 + Sweet 16 points (the games they were predicted to win). The Elite 8 is the predicted loss round and earns no Round Advancement points.
-    - Points are only awarded based on the original bracket resolution — teams that inherit slots through reseeding do not earn round advancement bonus points.
-    - This mode is only meaningful when `reseed_mode = "reseed_by_ranking"` is active. When `reseed_mode = "fixed"`, scoring predictions are not updated and Round Advancement produces results equivalent to Correct Winner, so organizers should not use both modes simultaneously unless using `reseed_by_ranking`.
+  - Round Advancement Bonus: awarded for each game a team wins, for rounds where the original bracket predicted them to
+    win.
+    - The predicted exit round is determined by the original bracket resolution against the user's ranking — the round a
+      team was predicted to _lose_ in. Points are earned for each game won in rounds before that predicted exit.
+    - Uses the same per-round map semantics as Correct Winner Points: `round_points.round_of_64` is earned for winning a
+      Round of 64 game, `round_points.round_of_32` for winning a Round of 32 game, and so on — but only for rounds where
+      the team was originally predicted to win.
+    - A team predicted to lose in the Elite 8 earns Round of 64 + Round of 32 + Sweet 16 points (the games they were
+      predicted to win). The Elite 8 is the predicted loss round and earns no Round Advancement points.
+    - Points are only awarded based on the original bracket resolution — teams that inherit slots through reseeding do
+      not earn round advancement bonus points.
+    - This mode is only meaningful when `reseed_mode = "reseed_by_ranking"` is active. When `reseed_mode = "fixed"`,
+      scoring predictions are not updated and Round Advancement produces results equivalent to Correct Winner, so
+      organizers should not use both modes simultaneously unless using `reseed_by_ranking`.
     - When `lock_mode = "before_round_of_64"`: no First Four points are awarded (same as other modes).
     - Organizer sets the points per round in the competition settings.
       - It is recommended that this value be less than correct winner points, but not required.
@@ -322,7 +367,8 @@ type SeedingBonusPointMap = {
   - Every 5 minutes during active tournament windows
   - Hourly otherwise
   - Route is protected by `CRON_SECRET` env var, validated against Vercel's injected `Authorization` header
-  - `src/lib/import.ts` is a plain async function with no scheduler logic — it is called by the cron API route and by the `npm run import:results` dev script
+  - `src/lib/import.ts` is a plain async function with no scheduler logic — it is called by the cron API route and by
+    the `npm run import:results` dev script
 - Failures: log and retry; surface stale data warning to admins in-app
 - On each successful import: recompute bracket scores and update leaderboard cache
 
@@ -341,24 +387,32 @@ type SeedingBonusPointMap = {
 
 ## Documentation Maintenance
 
-Documentation must be kept in sync with the code. This applies to every session, and is especially required when a milestone is delivered.
+Documentation must be kept in sync with the code. This applies to every session, and is especially required when a
+milestone is delivered.
 
 ### Files to update
 
-| File | When to update |
-| --- | --- |
-| `CLAUDE.md` | Any time a milestone is completed, an open question is resolved, a new convention is established, or a key architectural decision is made |
-| `CHANGELOG.md` | On every milestone delivery — move the milestone from *In Progress* to a dated release entry listing all additions |
-| `README.md` | When commands, environment variables, getting-started steps, or the milestone status table change |
+| File           | When to update                                                                                                                            |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLAUDE.md`    | Any time a milestone is completed, an open question is resolved, a new convention is established, or a key architectural decision is made |
+| `CHANGELOG.md` | On every milestone delivery — move the milestone from _In Progress_ to a dated release entry listing all additions                        |
+| `README.md`    | When commands, environment variables, getting-started steps, or the milestone status table change                                         |
 
 ### Rules
 
-- **Mark milestones complete** — when a milestone ships, update `CLAUDE.md` to `✅ _complete_` and add a full entry to `CHANGELOG.md`.
-- **Resolve open questions in place** — when an open question in `CLAUDE.md` is answered (by the user or by implementation), mark it `[x]` and record the answer inline. Never delete answered questions.
-- **Keep Key Commands accurate** — if a new `npm run` script is added or changed, update the Key Commands section in both `CLAUDE.md` and `README.md`.
-- **Commit docs with the code** — documentation changes must be committed in the same session as the code changes they describe, not deferred to a later commit.
-- **Commit after every prompt** — at the end of every response, stage all modified files and produce a single commit with a short, descriptive message summarising what changed. Leave the working tree clean before yielding back to the user.
-- **No stale milestone status** — the milestone status table in `README.md` must match the `✅ / 🔲` state of the milestones in `CLAUDE.md` at all times.
+- **Mark milestones complete** — when a milestone ships, update `CLAUDE.md` to `✅ _complete_` add a full entry to
+  `CHANGELOG.md`, and update the version in package.json.
+- **Resolve open questions in place** — when an open question in `CLAUDE.md` is answered (by the user or by
+  implementation), mark it `[x]` and record the answer inline. Never delete answered questions.
+- **Keep Key Commands accurate** — if a new `npm run` script is added or changed, update the Key Commands section in
+  both `CLAUDE.md` and `README.md`.
+- **Commit docs with the code** — documentation changes must be committed in the same session as the code changes they
+  describe, not deferred to a later commit.
+- **Commit after every prompt** — at the end of every response, stage all modified files and produce a single commit
+  with a short, descriptive message summarizing what changed. Leave the working tree clean before yielding back to the
+  user.
+- **No stale milestone status** — the milestone status table in `README.md` must match the `✅ / 🔲` state of the
+  milestones in `CLAUDE.md` at all times.
 
 ---
 
@@ -384,47 +438,77 @@ Documentation must be kept in sync with the code. This applies to every session,
         - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event={gameId}`
         - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/summary?event={gameId}`
 - [x] Multi-season support, or fresh deployment each year?
-  - Fresh deployment each year. Data model supports multi-season, but initial launch will focus on a single season to reduce complexity.
+  - Fresh deployment each year. Data model supports multi-season, but initial launch will focus on a single season to
+    reduce complexity.
 - [x] How is admin access granted — hard-coded email or DB role?
-  - For the initial release, admin access will be based on code and backend access. There will be no UI for managing admin users. In the future, we could add an `is_admin` flag to the `users` table and build an admin management UI.
+  - For the initial release, admin access will be based on code and backend access. There will be no UI for managing
+    admin users. In the future, we could add an `is_admin` flag to the `users` table and build an admin management UI.
 - [x] Finals score prediction bonus tiebreaker?
-  - Yes, the tiebreaker will be based on the absolute difference between the Men's and Women's bracket scores. The user with the smaller difference wins the tiebreaker.
+  - Yes, the tiebreaker will be based on the absolute difference between the Men's and Women's bracket scores. The user
+    with the smaller difference wins the tiebreaker.
 - [x] Launch timeline relative to Selection Sunday?
-  - The goal is to have a working MVP ready by Selection Sunday (March 15, 2026). This will allow us to onboard users and have the app ready for the start of the tournament. We can continue to iterate and add features during the tournament as needed.
+  - The goal is to have a working MVP ready by Selection Sunday (March 15, 2026). This will allow us to onboard users
+    and have the app ready for the start of the tournament. We can continue to iterate and add features during the
+    tournament as needed.
 - [x] Polling mechanism — Vercel Cron Jobs or node-cron?
-  - Vercel Cron Jobs. Schedules defined in `vercel.json`, calling a protected API route at `/api/cron/import-results`. `src/lib/import.ts` contains only a plain async function with no scheduler logic.
+  - Vercel Cron Jobs. Schedules defined in `vercel.json`, calling a protected API route at `/api/cron/import-results`.
+    `src/lib/import.ts` contains only a plain async function with no scheduler logic.
 - [x] Auth.js version — v4 or v5?
-  - Auth.js v5 (`next-auth@5`). Uses `AUTH_SECRET` env var, `auth()` for session access in server components, and `export { auth as middleware }` pattern in `src/middleware.ts`.
+  - Auth.js v5 (`next-auth@5`). Uses `AUTH_SECRET` env var, `auth()` for session access in server components, and
+    `export { auth as middleware }` pattern in `src/middleware.ts`.
 - [x] Seeding accuracy bonus for the championship winner?
-  - "Winning the championship" is treated as its own exit point with a separately configurable bonus (`championship_winner`), distinct from losing in the championship game (`championship_runner_up`). Both are keys in `SeedingBonusPointMap`.
+  - "Winning the championship" is treated as its own exit point with a separately configurable bonus
+    (`championship_winner`), distinct from losing in the championship game (`championship_runner_up`). Both are keys in
+    `SeedingBonusPointMap`.
 - [x] Ranking list pre-population — does the user start from a blank list, or a list pre-ordered by NCAA seed?
-  - Pre-populated in ascending order by each school's average NCAA seed across both tournaments. Schools in both tournaments use the average of their Men's and Women's seeds; schools in only one tournament use that seed directly. Ties broken alphabetically by school name. Users reorder from this starting point.
+  - Pre-populated in ascending order by each school's average NCAA seed across both tournaments. Schools in both
+    tournaments use the average of their Men's and Women's seeds; schools in only one tournament use that seed directly.
+    Ties broken alphabetically by school name. Users reorder from this starting point.
 - [x] First Four lock timing — does `lock_at` fall before the First Four games, or before the Round of 64?
-  - Competition organizers choose via `lock_mode` in `CompetitionSettings`. `tournament_seasons` stores both `first_four_lock_at` and `round_of_64_lock_at` timestamps (set by admin). Each competition enforces the timestamp matching its chosen `lock_mode`. When `lock_mode = "before_round_of_64"`, no First Four points are awarded in any scoring mode and ranking lists are built from the 64 Round of 64 qualifiers only.
+  - Competition organizers choose via `lock_mode` in `CompetitionSettings`. `tournament_seasons` stores both
+    `first_four_lock_at` and `round_of_64_lock_at` timestamps (set by admin). Each competition enforces the timestamp
+    matching its chosen `lock_mode`. When `lock_mode = "before_round_of_64"`, no First Four points are awarded in any
+    scoring mode and ranking lists are built from the 64 Round of 64 qualifiers only.
 - [x] `reseed_by_ranking` mode — full re-resolution or partial adjustment?
-  - Partial adjustment only. After each round's real results are imported, any future predicted matchup where one or more teams have been eliminated is updated: the eliminated team is replaced with the actual advancing team, and the matchup winner is re-evaluated using the two teams' rank positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
+  - Partial adjustment only. After each round's real results are imported, any future predicted matchup where one or
+    more teams have been eliminated is updated: the eliminated team is replaced with the actual advancing team, and the
+    matchup winner is re-evaluated using the two teams' rank positions in the user's original ranking. Matchups where
+    both predicted teams are still alive are not changed.
 - [x] Database host — Supabase or Railway?
-  - Railway. Plain PostgreSQL, no extra connection pooling config required, no inactivity pauses, and no unused platform features. Standard `DATABASE_URL` connection string works with Prisma out of the box.
+  - Railway. Plain PostgreSQL, no extra connection pooling config required, no inactivity pauses, and no unused platform
+    features. Standard `DATABASE_URL` connection string works with Prisma out of the box.
 - [x] Round Advancement Bonus — what is its purpose, and how does it differ from Correct Winner?
-  - Its purpose is to give additional scoring weight to original predictions independently of how `reseed_by_ranking` updates game-slot matchups. CW evaluates the (possibly reseeded) predicted winner of each specific game slot; RA always tracks original predicted team advancement, capped at the predicted exit round. They are only meaningfully distinct when `reseed_mode = "reseed_by_ranking"` is active. When `reseed_mode = "fixed"`, scoring predictions are not updated and RA produces equivalent results to CW; organizers should not combine both modes in that case.
+  - Its purpose is to give additional scoring weight to original predictions independently of how `reseed_by_ranking`
+    updates game-slot matchups. CW evaluates the (possibly reseeded) predicted winner of each specific game slot; RA
+    always tracks original predicted team advancement, capped at the predicted exit round. They are only meaningfully
+    distinct when `reseed_mode = "reseed_by_ranking"` is active. When `reseed_mode = "fixed"`, scoring predictions are
+    not updated and RA produces equivalent results to CW; organizers should not combine both modes in that case.
 
 ## External Configuration
 
-These configuration steps occur outside the project and likely require human intervention to implement.  They are documented here to track their progress and to provide steps that would likely need to be repeated if setting up a separate development environment.  They should be added to the readme section on development environment setup.
+These configuration steps occur outside the project and likely require human intervention to implement. They are
+documented here to track their progress and to provide steps that would likely need to be repeated if setting up a
+separate development environment. They should be added to the readme section on development environment setup.
 
 - [x] Set up Google Authentication.
-  - I already have a Google Cloud Account, so I don't have the setup steps for that.  Just be aware that if some things don't work dor some unknown reason, it is usually because there is a legal notice somewhere that you didn't accept.  That has burned me before.
+  - I already have a Google Cloud Account, so I don't have the setup steps for that. Just be aware that if some things
+    don't work dor some unknown reason, it is usually because there is a legal notice somewhere that you didn't accept.
+    That has burned me before.
   - Set up a new Project in the Google Cloud Console, if you don't already have one that you want to use.
-  - Go to the "APIs & Services" > "OAuth Consent Screen" page for your project.  It will take you to the Google Auth Platform Overview.
-  - Go to the Branding tab and fill in the required fields.  You can add your email and a product name, but you don't need to fill in any of the other fields for testing purposes. (You can't use localhost here anyway.)
-  - Note that the App Name from this page will be shown on the Google sign-in prompt, so make it descriptive of your app.  If you provide privacy policy and terms of service URLs, those will be shown on the consent screen as well.
+  - Go to the "APIs & Services" > "OAuth Consent Screen" page for your project. It will take you to the Google Auth
+    Platform Overview.
+  - Go to the Branding tab and fill in the required fields. You can add your email and a product name, but you don't
+    need to fill in any of the other fields for testing purposes. (You can't use localhost here anyway.)
+  - Note that the App Name from this page will be shown on the Google sign-in prompt, so make it descriptive of your
+    app. If you provide privacy policy and terms of service URLs, those will be shown on the consent screen as well.
   - Save and continue, then back to the dashboard.
   - Go to the "APIs & Services" > "Credentials" page for your project.
   - Click "Create Credentials" > "OAuth client ID".
   - Select "Web application" as the application type.
   - Add `http://localhost:3000` to the "Authorized JavaScript origins".
   - Add `http://localhost:3000/api/auth/callback/google` to the "Authorized redirect URIs".
-  - Click "Create" and note the generated Client ID and Client Secret.  These will be used in the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables.
+  - Click "Create" and note the generated Client ID and Client Secret. These will be used in the `GOOGLE_CLIENT_ID` and
+    `GOOGLE_CLIENT_SECRET` environment variables.
 - [ ] Set up Apple Authentication.
 - [ ] Set up Microsoft Authentication.
 - [ ] Create Vercel project and configure environment variables.

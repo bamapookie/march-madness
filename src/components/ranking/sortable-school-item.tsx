@@ -80,4 +80,3 @@ export function SortableSchoolItem({ entry, rank, isLocked, isDragOverlay = fals
     </div>
   );
 }
-

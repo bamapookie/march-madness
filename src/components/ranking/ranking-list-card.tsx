@@ -77,8 +77,10 @@ export function RankingListCard({ list }: Props) {
         </div>
         <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
           {list.entryCount} schools ·{" "}
-          {list.lockMode === "BEFORE_FIRST_FOUR" ? "Locks before First Four" : "Locks before Round of 64"} ·
-          Updated {updatedAgo}
+          {list.lockMode === "BEFORE_FIRST_FOUR"
+            ? "Locks before First Four"
+            : "Locks before Round of 64"}{" "}
+          · Updated {updatedAgo}
           {!list.isLocked && <> · Locks {lockLabel}</>}
         </p>
         {deleteError && <p className="mt-1 text-xs text-red-500">{deleteError}</p>}
@@ -106,4 +108,3 @@ export function RankingListCard({ list }: Props) {
     </div>
   );
 }
-

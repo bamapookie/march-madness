@@ -1,8 +1,11 @@
 # 🏀 March Madness Bracket App
 
-A web app where users rank all schools in the NCAA Men's and Women's Basketball Tournaments in a single unified list. That one ranking list automatically resolves into both a Men's and Women's bracket — the higher-ranked school always wins every matchup. No game-by-game picks.
+A web app where users rank all schools in the NCAA Men's and Women's Basketball Tournaments in a single unified list.
+That one ranking list automatically resolves into both a Men's and Women's bracket — the higher-ranked school always
+wins every matchup. No game-by-game picks.
 
-Users compete in groups (competitions) where organizers configure scoring, reseeding rules, and entry limits. The app scores both brackets together as a combined total.
+Users compete in groups (competitions) where organizers configure scoring, reseeding rules, and entry limits. The app
+scores both brackets together as a combined total.
 
 ---
 
@@ -21,7 +24,7 @@ Users compete in groups (competitions) where organizers configure scoring, resee
 ## Tech Stack
 
 | Layer          | Technology                                  |
-|----------------|---------------------------------------------|
+| -------------- | ------------------------------------------- |
 | Framework      | Next.js 16 (App Router)                     |
 | Language       | TypeScript (strict mode)                    |
 | Database       | PostgreSQL (Railway)                        |
@@ -77,7 +80,8 @@ npx prisma migrate dev
 npm run seed:test
 ```
 
-This creates a 2026 tournament season and seeds 53 representative schools so you can immediately create and reorder ranking lists without waiting for ESPN data to be imported.
+This creates a 2026 tournament season and seeds 53 representative schools so you can immediately create and reorder
+ranking lists without waiting for ESPN data to be imported.
 
 ### 6. Start the development server
 
@@ -93,18 +97,18 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 Copy `.env.example` to `.env` and populate each value:
 
-| Variable               | Description                                                    |
-|------------------------|----------------------------------------------------------------|
-| `DATABASE_URL`         | PostgreSQL connection string (Railway or local)                |
-| `AUTH_SECRET`          | Random secret for Auth.js — generate with `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                         |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                     |
-| `APPLE_CLIENT_ID`      | Apple OAuth service ID                                         |
-| `APPLE_CLIENT_SECRET`  | Contents of your Apple `.p8` key file                          |
-| `MICROSOFT_CLIENT_ID`  | Microsoft Azure app (client) ID                                |
-| `MICROSOFT_CLIENT_SECRET` | Microsoft Azure client secret                               |
-| `MICROSOFT_TENANT_ID`  | `"common"` for any Microsoft account, or a specific tenant ID  |
-| `CRON_SECRET`          | Secret to authenticate `/api/cron/*` routes — generate with `openssl rand -base64 32` |
+| Variable                  | Description                                                                           |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `DATABASE_URL`            | PostgreSQL connection string (Railway or local)                                       |
+| `AUTH_SECRET`             | Random secret for Auth.js — generate with `openssl rand -base64 32`                   |
+| `GOOGLE_CLIENT_ID`        | Google OAuth client ID                                                                |
+| `GOOGLE_CLIENT_SECRET`    | Google OAuth client secret                                                            |
+| `APPLE_CLIENT_ID`         | Apple OAuth service ID                                                                |
+| `APPLE_CLIENT_SECRET`     | Contents of your Apple `.p8` key file                                                 |
+| `MICROSOFT_CLIENT_ID`     | Microsoft Azure app (client) ID                                                       |
+| `MICROSOFT_CLIENT_SECRET` | Microsoft Azure client secret                                                         |
+| `MICROSOFT_TENANT_ID`     | `"common"` for any Microsoft account, or a specific tenant ID                         |
+| `CRON_SECRET`             | Secret to authenticate `/api/cron/*` routes — generate with `openssl rand -base64 32` |
 
 > **Never commit `.env` to version control.** It is listed in `.gitignore`.
 
@@ -173,16 +177,16 @@ prisma.config.ts          # Prisma v7 datasource + migrations config
 
 ## Milestone Status
 
-| Milestone | Description | Status |
-|-----------|-------------|--------|
-| **0.1.0** | Foundation — schema, auth, middleware, layout | ✅ Complete |
-| **0.2.0** | Ranking Lists — drag-to-reorder, API, lock enforcement | ✅ Complete |
-| **0.3.0** | Core Domain Logic — bracket resolution + scoring engine | ✅ Complete |
+| Milestone | Description                                              | Status         |
+| --------- | -------------------------------------------------------- | -------------- |
+| **0.1.0** | Foundation — schema, auth, middleware, layout            | ✅ Complete    |
+| **0.2.0** | Ranking Lists — drag-to-reorder, API, lock enforcement   | ✅ Complete    |
+| **0.3.0** | Core Domain Logic — bracket resolution + scoring engine  | ✅ Complete    |
 | **0.4.0** | ESPN Import & Season Setup — API client, cron job, admin | 🔲 Not started |
-| **0.5.0** | Competitions — group play, invites, lobby, dashboard | 🔲 Not started |
-| **0.6.0** | Bracket Viewer & Leaderboard | 🔲 Not started |
-| **0.7.0** | Notifications & Polish | 🔲 Not started |
-| **1.0.0** | Production Launch | 🔲 Not started |
+| **0.5.0** | Competitions — group play, invites, lobby, dashboard     | 🔲 Not started |
+| **0.6.0** | Bracket Viewer & Leaderboard                             | 🔲 Not started |
+| **0.7.0** | Notifications & Polish                                   | 🔲 Not started |
+| **1.0.0** | Production Launch                                        | 🔲 Not started |
 
 ---
 
@@ -202,13 +206,15 @@ prisma.config.ts          # Prisma v7 datasource + migrations config
 
 ### Vercel Cron Jobs
 
-Cron schedules are defined in `vercel.json`. The `/api/cron/import-results` route is called automatically and is protected by the `CRON_SECRET` environment variable.
+Cron schedules are defined in `vercel.json`. The `/api/cron/import-results` route is called automatically and is
+protected by the `CRON_SECRET` environment variable.
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting pull requests.
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting pull
+requests.
 
 ---
 
