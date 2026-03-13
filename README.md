@@ -1,36 +1,223 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏀 March Madness Bracket App
+
+A web app where users rank all schools in the NCAA Men's and Women's Basketball Tournaments in a single unified list. That one ranking list automatically resolves into both a Men's and Women's bracket — the higher-ranked school always wins every matchup. No game-by-game picks.
+
+Users compete in groups (competitions) where organizers configure scoring, reseeding rules, and entry limits. The app scores both brackets together as a combined total.
+
+---
+
+## Features
+
+- **Single ranking list** — rank every tournament school once; brackets are resolved automatically
+- **Men's + Women's brackets** — one list drives both simultaneously
+- **Competition groups** — organizers control scoring modes, lock timing, and entry limits
+- **Flexible scoring** — round advancement, correct winner, and seeding accuracy bonus points
+- **Reseeding support** — slot-based or ranking-based reseeding after upsets
+- **Live results** — ESPN API polling via Vercel Cron Jobs
+- **OAuth sign-in** — Google, Apple, and Microsoft (no passwords)
+
+---
+
+## Tech Stack
+
+| Layer          | Technology                                  |
+|----------------|---------------------------------------------|
+| Framework      | Next.js 16 (App Router)                     |
+| Language       | TypeScript (strict mode)                    |
+| Database       | PostgreSQL (Railway)                        |
+| ORM            | Prisma v7                                   |
+| Auth           | Auth.js v5 (Google, Apple, Microsoft OAuth) |
+| Hosting        | Vercel (app) + Railway (DB)                 |
+| Results import | Vercel Cron Jobs polling ESPN API           |
+| Styling        | Tailwind CSS v4                             |
+
+---
+
+## Prerequisites
+
+- [Node.js](https://nodejs.org/) v20 or later
+- [npm](https://www.npmjs.com/) v10 or later
+- A PostgreSQL database (local or [Railway](https://railway.app/))
+- OAuth app credentials for at least one provider (Google, Apple, or Microsoft)
+
+---
 
 ## Getting Started
 
-First, run the development server:
+### 1. Clone the repository
+
+```bash
+git clone https://github.com/your-org/march-madness.git
+cd march-madness
+```
+
+### 2. Install dependencies
+
+```bash
+npm install
+```
+
+### 3. Configure environment variables
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` and fill in all required values. See [Environment Variables](#environment-variables) below.
+
+### 4. Set up the database
+
+```bash
+npx prisma migrate dev
+```
+
+### 5. Seed test data (development only)
+
+```bash
+npm run seed:test
+```
+
+This creates a 2026 tournament season and seeds 53 representative schools so you can immediately create and reorder ranking lists without waiting for ESPN data to be imported.
+
+### 6. Start the development server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment Variables
 
-## Learn More
+Copy `.env.example` to `.env` and populate each value:
 
-To learn more about Next.js, take a look at the following resources:
+| Variable               | Description                                                    |
+|------------------------|----------------------------------------------------------------|
+| `DATABASE_URL`         | PostgreSQL connection string (Railway or local)                |
+| `AUTH_SECRET`          | Random secret for Auth.js — generate with `openssl rand -base64 32` |
+| `GOOGLE_CLIENT_ID`     | Google OAuth client ID                                         |
+| `GOOGLE_CLIENT_SECRET` | Google OAuth client secret                                     |
+| `APPLE_CLIENT_ID`      | Apple OAuth service ID                                         |
+| `APPLE_CLIENT_SECRET`  | Contents of your Apple `.p8` key file                          |
+| `MICROSOFT_CLIENT_ID`  | Microsoft Azure app (client) ID                                |
+| `MICROSOFT_CLIENT_SECRET` | Microsoft Azure client secret                               |
+| `MICROSOFT_TENANT_ID`  | `"common"` for any Microsoft account, or a specific tenant ID  |
+| `CRON_SECRET`          | Secret to authenticate `/api/cron/*` routes — generate with `openssl rand -base64 32` |
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+> **Never commit `.env` to version control.** It is listed in `.gitignore`.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+---
 
-## Deploy on Vercel
+## Key Commands
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Development
+npm run dev               # Start dev server (localhost:3000)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# Database
+npx prisma migrate dev    # Run migrations in development
+npx prisma migrate deploy # Run migrations in production
+npx prisma studio         # Open Prisma DB browser
+npx prisma generate       # Regenerate Prisma client after schema changes
+
+# Build
+npm run build             # prisma generate + next build
+
+# Code quality
+npm run lint              # ESLint check
+npm run typecheck         # TypeScript type check
+npm run format            # Prettier — format all files
+npm run format:check      # Prettier — check formatting (CI)
+
+# Results import (manual trigger for testing)
+npm run import:results
+
+# Development data seeding
+npm run seed:test         # Seed a 2026 season + 53 test schools (local dev only)
+```
+
+---
+
+## Project Structure
+
+```
+/src
+  /app                    # Next.js App Router pages and layouts
+    /api                  # API route handlers
+      /cron               # Vercel Cron Job handlers
+    /(auth)               # Login / OAuth callback pages
+    /dashboard            # User dashboard
+    /ranking              # Create/edit ranking list
+    /bracket              # Bracket viewer
+    /competition          # Competition lobby, leaderboard, create
+    /admin                # Admin panel
+  /components             # Shared React components
+  /generated/prisma       # Auto-generated Prisma client (gitignored)
+  /lib
+    db.ts                 # Prisma client singleton
+    auth.ts               # Auth.js v5 config
+    bracket.ts            # Bracket resolution logic (pure)
+    scoring.ts            # Scoring logic (pure)
+    import.ts             # ESPN API import logic (plain async fn)
+  /middleware.ts           # Auth middleware
+  /types                  # Shared TypeScript types
+/prisma
+  schema.prisma           # Database schema
+  /migrations             # Prisma migration files
+prisma.config.ts          # Prisma v7 datasource + migrations config
+```
+
+---
+
+## Milestone Status
+
+| Milestone | Description | Status |
+|-----------|-------------|--------|
+| **0.1.0** | Foundation — schema, auth, middleware, layout | ✅ Complete |
+| **0.2.0** | Ranking Lists — drag-to-reorder, API, lock enforcement | ✅ Complete |
+| **0.3.0** | Core Domain Logic — bracket resolution + scoring engine | 🔲 Not started |
+| **0.4.0** | ESPN Import & Season Setup — API client, cron job, admin | 🔲 Not started |
+| **0.5.0** | Competitions — group play, invites, lobby, dashboard | 🔲 Not started |
+| **0.6.0** | Bracket Viewer & Leaderboard | 🔲 Not started |
+| **0.7.0** | Notifications & Polish | 🔲 Not started |
+| **1.0.0** | Production Launch | 🔲 Not started |
+
+---
+
+## Deployment
+
+### Vercel (app)
+
+1. Import the repository into [Vercel](https://vercel.com/).
+2. Set all environment variables in the Vercel dashboard (Settings → Environment Variables).
+3. The `build` script (`prisma generate && next build`) runs automatically on each deploy.
+
+### Railway (database)
+
+1. Create a new PostgreSQL service in [Railway](https://railway.app/).
+2. Copy the connection string into `DATABASE_URL` in Vercel's environment variables.
+3. Run `npx prisma migrate deploy` after the first deploy (or wire it into your release command).
+
+### Vercel Cron Jobs
+
+Cron schedules are defined in `vercel.json`. The `/api/cron/import-results` route is called automatically and is protected by the `CRON_SECRET` environment variable.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines on reporting bugs, suggesting features, and submitting pull requests.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](./CHANGELOG.md) for a history of releases and milestone progress.
+
+---
+
+## License
+
+This project is licensed under the MIT License. See [LICENSE](./LICENSE) for details.

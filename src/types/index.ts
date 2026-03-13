@@ -70,3 +70,54 @@ export type CompetitionSettings = {
   /** Points per round for the correct winner scoring mode. */
   correct_winner_points: RoundPointMap;
 };
+
+// ─── Ranking Lists ────────────────────────────────────────────────────────────
+
+export type LockModeType = "BEFORE_FIRST_FOUR" | "BEFORE_ROUND_OF_64";
+
+/** Summary of a school shown inside a ranking list entry. */
+export type SchoolSummary = {
+  id: string;
+  name: string;
+  shortName: string | null;
+  abbreviation: string | null;
+  isInMensTournament: boolean;
+  isInWomensTournament: boolean;
+  mensSeed: number | null;
+  womensSeed: number | null;
+  mensRegion: string | null;
+  womensRegion: string | null;
+  /** Pre-computed average seed for display sorting. */
+  averageSeed: number;
+};
+
+/** A single entry in a ranking list, including its school details. */
+export type RankingEntryWithSchool = {
+  id: string;
+  rank: number;
+  school: SchoolSummary;
+};
+
+/** Lightweight summary returned by the list endpoint. */
+export type RankingListSummary = {
+  id: string;
+  name: string;
+  lockMode: LockModeType;
+  entryCount: number;
+  isLocked: boolean;
+  lockAt: string; // ISO-8601
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Full detail including all entries, returned by the single-list endpoint. */
+export type RankingListDetail = {
+  id: string;
+  name: string;
+  lockMode: LockModeType;
+  isLocked: boolean;
+  lockAt: string; // ISO-8601
+  entries: RankingEntryWithSchool[];
+  createdAt: string;
+  updatedAt: string;
+};

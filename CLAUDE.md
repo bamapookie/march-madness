@@ -13,7 +13,7 @@ Users compete in groups (competitions) where organizers configure scoring, resee
 Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round of 64 begins **~March 20**.
 Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can ship during the tournament.
 
-### 0.1.0 — Foundation _(prerequisite for everything)_
+### 0.1.0 — Foundation ✅ _complete_
 
 - Prisma schema — all tables, relations, indexes
 - Shared TypeScript types (`/types`)
@@ -24,7 +24,7 @@ Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can s
 - Base layout and navigation shell
 - Environment variable documentation (`.env.example`)
 
-### 0.2.0 — Ranking Lists _(core user action)_
+### 0.2.0 — Ranking Lists ✅ _complete_
 
 - API routes — create, read, update ranking list and entries
 - Ranking list pre-population by average NCAA seed
@@ -146,6 +146,9 @@ npm run format:check      # Prettier — check formatting (CI)
 
 # Results import (manual trigger for testing)
 npm run import:results
+
+# Development data seeding
+npm run seed:test         # Seed a 2026 season + 53 test schools (local dev only)
 ```
 
 > **Prisma v7 notes:** The schema has no `datasource url` — the connection string lives in
@@ -326,6 +329,28 @@ type SeedingBonusPointMap = {
 - All bracket and scoring logic lives in `/lib` — keep it pure and testable
 - Server components by default; use `"use client"` only where needed
 - Ranking lists and entries are **immutable after `lock_at`** — enforce this at the API layer, not just the UI
+
+---
+
+## Documentation Maintenance
+
+Documentation must be kept in sync with the code. This applies to every session, and is especially required when a milestone is delivered.
+
+### Files to update
+
+| File | When to update |
+| --- | --- |
+| `CLAUDE.md` | Any time a milestone is completed, an open question is resolved, a new convention is established, or a key architectural decision is made |
+| `CHANGELOG.md` | On every milestone delivery — move the milestone from *In Progress* to a dated release entry listing all additions |
+| `README.md` | When commands, environment variables, getting-started steps, or the milestone status table change |
+
+### Rules
+
+- **Mark milestones complete** — when a milestone ships, update `CLAUDE.md` to `✅ _complete_` and add a full entry to `CHANGELOG.md`.
+- **Resolve open questions in place** — when an open question in `CLAUDE.md` is answered (by the user or by implementation), mark it `[x]` and record the answer inline. Never delete answered questions.
+- **Keep Key Commands accurate** — if a new `npm run` script is added or changed, update the Key Commands section in both `CLAUDE.md` and `README.md`.
+- **Commit docs with the code** — documentation changes must be committed in the same session as the code changes they describe, not deferred to a later commit.
+- **No stale milestone status** — the milestone status table in `README.md` must match the `✅ / 🔲` state of the milestones in `CLAUDE.md` at all times.
 
 ---
 

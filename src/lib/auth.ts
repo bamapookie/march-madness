@@ -5,9 +5,12 @@ import Apple from "next-auth/providers/apple";
 import MicrosoftEntraId from "next-auth/providers/microsoft-entra-id";
 
 import { db } from "@/lib/db";
+import { authConfig } from "@/lib/auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  ...authConfig,
   adapter: PrismaAdapter(db),
+  // Full provider configs (require secrets — Node.js runtime only)
   providers: [
     Google({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -23,13 +26,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       issuer: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID ?? "common"}/v2.0`,
     }),
   ],
+  // Override callbacks: drop the edge-only `authorized` check and add session enrichment
   callbacks: {
-    session({ session, user }) {
-      session.user.id = user.id;
+    jwt({ token, user }) {
+      // `user` is only present on the initial sign-in; persist the DB id into the token
+      if (user?.id) token.id = user.id;
+      return token;
+    },
+    session({ session, token }) {
+      if (token.id) session.user.id = token.id as string;
       return session;
     },
-  },
-  pages: {
-    signIn: "/sign-in",
   },
 });

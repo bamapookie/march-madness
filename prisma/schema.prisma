@@ -27,6 +27,11 @@ enum Round {
   CHAMPIONSHIP
 }
 
+enum LockMode {
+  BEFORE_FIRST_FOUR
+  BEFORE_ROUND_OF_64
+}
+
 // ─── Auth.js v5 Required Models ──────────────────────────────────────────────
 
 model User {
@@ -172,10 +177,11 @@ model BracketSlot {
 // ─── Ranking Lists ───────────────────────────────────────────────────────────
 
 model RankingList {
-  id       String @id @default(cuid())
+  id       String   @id @default(cuid())
   seasonId String
   userId   String
   name     String
+  lockMode LockMode @default(BEFORE_FIRST_FOUR)
 
   season             TournamentSeason @relation(fields: [seasonId], references: [id])
   user               User             @relation(fields: [userId], references: [id], onDelete: Cascade)
