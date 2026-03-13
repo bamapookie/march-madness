@@ -61,4 +61,3 @@ export function CreateListButton({ variant = "primary" }: Props) {
     </div>
   );
 }
-

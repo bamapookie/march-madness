@@ -9,17 +9,16 @@ import type { ApiResponse, RankingListSummary } from "@/types";
 export async function GET(): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json(
-      { data: null, error: "Unauthorized" } satisfies ApiResponse<null>,
-      { status: 401 },
-    );
+    return Response.json({ data: null, error: "Unauthorized" } satisfies ApiResponse<null>, {
+      status: 401,
+    });
   }
 
   const activeSeason = await db.tournamentSeason.findFirst({ where: { isActive: true } });
   if (!activeSeason) {
     return Response.json(
       { data: null, error: "No active tournament season" } satisfies ApiResponse<null>,
-      { status: 404 },
+      { status: 404 }
     );
   }
 
@@ -48,10 +47,9 @@ export async function GET(): Promise<Response> {
 export async function POST(request: Request): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json(
-      { data: null, error: "Unauthorized" } satisfies ApiResponse<null>,
-      { status: 401 },
-    );
+    return Response.json({ data: null, error: "Unauthorized" } satisfies ApiResponse<null>, {
+      status: 401,
+    });
   }
 
   let body: { name?: string; lockMode?: string } = {};
@@ -69,14 +67,17 @@ export async function POST(request: Request): Promise<Response> {
   if (!activeSeason) {
     return Response.json(
       { data: null, error: "No active tournament season" } satisfies ApiResponse<null>,
-      { status: 404 },
+      { status: 404 }
     );
   }
 
   if (isRankingListLocked(activeSeason, lockMode)) {
     return Response.json(
-      { data: null, error: "Rankings are locked for this competition type" } satisfies ApiResponse<null>,
-      { status: 403 },
+      {
+        data: null,
+        error: "Rankings are locked for this competition type",
+      } satisfies ApiResponse<null>,
+      { status: 403 }
     );
   }
 
@@ -111,7 +112,7 @@ export async function POST(request: Request): Promise<Response> {
             error:
               "First Four results have not been fully imported yet. Wait for all First Four games to finish or use the 'Before First Four' lock mode.",
           } satisfies ApiResponse<null>,
-          { status: 400 },
+          { status: 400 }
         );
       }
 
@@ -165,7 +166,7 @@ export async function POST(request: Request): Promise<Response> {
         error:
           "No tournament schools found for the active season. Please ask an administrator to import school data.",
       } satisfies ApiResponse<null>,
-      { status: 422 },
+      { status: 422 }
     );
   }
 
@@ -204,8 +205,6 @@ export async function POST(request: Request): Promise<Response> {
       },
       error: null,
     } satisfies ApiResponse<{ id: string; name: string; lockMode: LockMode; entryCount: number }>,
-    { status: 201 },
+    { status: 201 }
   );
 }
-
-

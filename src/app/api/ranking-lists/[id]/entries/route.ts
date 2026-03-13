@@ -11,10 +11,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function PUT(request: Request, { params }: RouteContext): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json(
-      { data: null, error: "Unauthorized" } satisfies ApiResponse<null>,
-      { status: 401 },
-    );
+    return Response.json({ data: null, error: "Unauthorized" } satisfies ApiResponse<null>, {
+      status: 401,
+    });
   }
 
   const { id } = await params;
@@ -30,27 +29,25 @@ export async function PUT(request: Request, { params }: RouteContext): Promise<R
   if (!list) {
     return Response.json(
       { data: null, error: "Ranking list not found" } satisfies ApiResponse<null>,
-      { status: 404 },
+      { status: 404 }
     );
   }
   if (list.userId !== session.user.id) {
-    return Response.json(
-      { data: null, error: "Forbidden" } satisfies ApiResponse<null>,
-      { status: 403 },
-    );
+    return Response.json({ data: null, error: "Forbidden" } satisfies ApiResponse<null>, {
+      status: 403,
+    });
   }
   if (isRankingListLocked(list.season, list.lockMode)) {
-    return Response.json(
-      { data: null, error: "Rankings are locked" } satisfies ApiResponse<null>,
-      { status: 403 },
-    );
+    return Response.json({ data: null, error: "Rankings are locked" } satisfies ApiResponse<null>, {
+      status: 403,
+    });
   }
 
   const body = (await request.json()) as { orderedSchoolIds?: string[] };
   if (!Array.isArray(body.orderedSchoolIds)) {
     return Response.json(
       { data: null, error: "orderedSchoolIds must be an array" } satisfies ApiResponse<null>,
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -67,9 +64,10 @@ export async function PUT(request: Request, { params }: RouteContext): Promise<R
     return Response.json(
       {
         data: null,
-        error: "orderedSchoolIds must contain exactly the same schools as the current ranking list with no duplicates.",
+        error:
+          "orderedSchoolIds must contain exactly the same schools as the current ranking list with no duplicates.",
       } satisfies ApiResponse<null>,
-      { status: 400 },
+      { status: 400 }
     );
   }
 
@@ -114,8 +112,7 @@ export async function PUT(request: Request, { params }: RouteContext): Promise<R
     return { id: entry.id, rank: entry.rank, school };
   });
 
-  return Response.json(
-    { data: { entries }, error: null } satisfies ApiResponse<{ entries: RankingEntryWithSchool[] }>,
-  );
+  return Response.json({ data: { entries }, error: null } satisfies ApiResponse<{
+    entries: RankingEntryWithSchool[];
+  }>);
 }
-

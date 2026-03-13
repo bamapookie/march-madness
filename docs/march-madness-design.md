@@ -6,14 +6,18 @@ Version 1.0 • March 2026
 
 ## 1. Application Concept
 
-This application allows users to build personalized ranking lists of all schools participating in the NCAA Men's and Women's Basketball Tournaments. Each ranking list a user creates serves as their bracket prediction for both tournaments simultaneously --- the higher-ranked school always advances when two schools meet.
+This application allows users to build personalized ranking lists of all schools participating in the NCAA Men's and
+Women's Basketball Tournaments. Each ranking list a user creates serves as their bracket prediction for both tournaments
+simultaneously --- the higher-ranked school always advances when two schools meet.
 
 ### 1.1 Core Mechanic
 
 - All schools fielding a team in either the Men's or Women's NCAA Tournament are pooled into a single combined field
-- A school with both a Men's and Women's team occupies one slot in the ranking, and that ranking applies to both brackets
+- A school with both a Men's and Women's team occupies one slot in the ranking, and that ranking applies to both
+  brackets
 - The user orders this full field from best (#1) to worst, creating their personal ranking list
-- That ranking list is automatically resolved into both a Men's and Women's bracket using standard NCAA bracket structure (four regions) including the First Four play-in games
+- That ranking list is automatically resolved into both a Men's and Women's bracket using standard NCAA bracket
+  structure (four regions) including the First Four play-in games
 - In every matchup, the higher-ranked school advances --- no separate game-by-game picks are required
 - The ranking locks at tournament start and does not change.
 
@@ -69,46 +73,71 @@ Each competition is configured by its organizer. The following settings are avai
 
 ### 3.2 Scoring Options
 
-Organizers define scoring independently for each competition. Several scoring modes are available and may be combined:
+Organizers define scoring independently for each competition. Several scoring modes are available and may be combined.
+The recommended point values decrease from Mode 1 → Bonus → Mode 2, but organizers may set any values they choose.
 
-#### Mode 1: Round Advancement Points
+#### Mode 1: Correct Game Winner Points _(primary / traditional scoring)_
 
-Points awarded for correctly predicting that a school reaches a given round, regardless of path.
+Points awarded for correctly predicting the winner of a specific game. This is the traditional bracket-challenge scoring
+method and is recommended to be worth more than the other modes.
+
+- Organizer sets a point value per correct game winner per round; a correct championship pick can be worth more than a
+  correct Round of 64 pick.
+- If a participant's bracket predicted School A to beat School B in the Round of 64, and that game actually resulted in
+  School A winning, the participant earns points for that correct prediction.
+- If reseeding is **disabled**: a matchup where an eliminated team was predicted to win earns no points — identical to
+  how traditional bracket challenges work.
+- If reseeding is **enabled**: when a predicted team is eliminated, future matchups are recalculated using the actual
+  advancing teams and the user's original ranking order. Points for correct winners are still awarded based on those
+  recalculated predictions.
+  - _Example:_ A participant ranked an 8-team bracket 5, 6, 2, 1, 3, 4, 8, 7. The 8-seed upsets the 1-seed; the 4-seed
+    beats the 5-seed. The 8-seed now plays the 4-seed. Because the participant originally ranked the 4-seed higher than
+    the 8-seed, the 4-seed is the new predicted winner. If the 4-seed wins that game, the participant earns
+    correct-winner points.
+
+#### Bonus: Seeding Accuracy Points _(optional)_
+
+Optional bonus points awarded when a school exits the tournament in the **exact** round predicted by the user's resolved
+bracket. Recommended to be worth less than Mode 1 (Correct Winner) but more than Mode 2 (Round Advancement).
+
+- Organizer enables/disables this mode and sets bonus values independently per round.
+- The predicted exit round is determined by bracket resolution — the round a school is predicted to **lose** in is their
+  target round.
+- A school must reach the predicted round and then **lose** there to earn the bonus. Advancing past the predicted round
+  forfeits the bonus.
+- "Winning the championship" is treated as its own exit point: `championship_winner` bonus is awarded only if the team
+  actually wins the title; `championship_runner_up` bonus is awarded only to the actual runner-up.
+- This bonus uses the **original** ranking predictions, not any reseeded matchups.
+
+#### Mode 2: Round Advancement Points _(supplemental)_
+
+Points awarded for correctly predicting that a school reaches a given round, regardless of path. Recommended to be worth
+less than both Mode 1 and the Seeding Accuracy Bonus.
 
 - Organizer sets a point value for each round (First Four through Championship).
-- A school reaching a round earns points for any participant whose ranking had that school reaching at least that round.
-
-#### Mode 2: Correct Game Winner Points
-
-Points awarded for correctly predicting the winner of a specific game.
-
-- Organizer sets a point value per correct game winner per round.
-- If a participant's bracket predicted School A to beat School B in the Round of 64, and that game actually resulted in School A winning, the participant earns points for that correct prediction.
-- If reseeding is enabled, and a participant's predicted winner of a matchup is eliminated, later rounds are recalculated based on the surviving teams, but points for correct winners are still awarded based on the original rankings.
-  - For example, if a participant predicted an 8 team bracket with the official seeds ranked 5, 6, 2, 1, 3, 4, 8, 7, and the 8 seed beats the 1 seed, and the 4 seed beats the 5 seed, then the 8 seed will play the 4 seed in the next round. Since the participant originally ranked the 4 seed higher than the 8 seed, the participant's predicted winner of that matchup would be the 4 seed. If the 4 seed then beats the 8 seed, the participant would earn points for that matchup since their predicted winner (the 4 seed) won.
-- If reseeding is disabled, then a matchup where an eliminated team was predicted to win would simply not earn points.
-
-#### Bonus: Seeding Accuracy Points
-
-- Optional bonus points for correctly predicting a school advances to the exact round they were seeded to reach based on the user's original ranking.
-- Organizer enables/disables this and sets the bonus values per round. 0 points for the First Four and Round of 64.
-- To win this bonus, a team must advance to the round after their last predicted winning round, and if not picked to win the tournament, must lose in that next round. For example, if a user ranked a team to win in the Sweet 16, that team must win in the Round of 64, the Round of 32, and the Sweet 16, then lose in the Elite 8 to earn the bonus points for the Sweet 16.
+- Points are cumulative: a school reaching the Elite 8 earns points for Round of 32, Sweet 16, and Elite 8.
+- No points are awarded for simply reaching the Round of 64 — all teams start there.
+- First Four points are only applicable when the competition locks before the First Four games are played.
+- Points are awarded based on the **original** ranking predictions only; teams that inherit a slot via reseeding do not
+  earn round advancement points for that slot.
 
 ### 3.3 Reseeding Options
 
-When an upset occurs (a lower-ranked school defeats a higher-ranked school), subsequent rounds can be handled in one of two ways:
+When an upset occurs (a lower-ranked school defeats a higher-ranked school), subsequent rounds can be handled in one of
+two ways:
 
-| **Mode**                                        | **Behavior**                                                                                                                                              |
-| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Slot-based (no reseed)**                      | The upset winner inherits the eliminated team's bracket slot. The user's ranking still determines all subsequent matchups in that slot.                   |
-| **Reseed by original**                          | After each round, surviving teams are redistributed ranking into a fresh bracket seeded by each user's original ranking order, ignoring how they arrived. |
-| **Organizer selects one mode per competition.** | This applies to both the Men's and Women's brackets equally.                                                                                              |
+| **Mode**                                        | **Behavior**                                                                                                                                                                                                                                                                                                                                                                        |
+| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Slot-based (no reseed)**                      | The upset winner inherits the eliminated team's bracket slot. The user's ranking still determines all subsequent matchups in that slot. Matchups where both predicted teams are still alive are unchanged.                                                                                                                                                                          |
+| **Reseed by original ranking**                  | After each round's real results are imported, any future predicted matchup where one or more teams have been eliminated is updated: the eliminated team is replaced by the actual advancing team, and the matchup winner is re-evaluated by comparing the two teams' positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed. |
+| **Organizer selects one mode per competition.** | This applies to both the Men's and Women's brackets equally.                                                                                                                                                                                                                                                                                                                        |
 
 ### 3.4 Tiebreaking
 
 When two participants have identical total scores, the tiebreaker is resolved as follows:
 
-- Primary tiebreaker: The participant whose Men's and Women's bracket scores are closer together (smaller absolute difference) wins. This rewards balanced knowledge across both tournaments.
+- Primary tiebreaker: The participant whose Men's and Women's bracket scores are closer together (smaller absolute
+  difference) wins. This rewards balanced knowledge across both tournaments.
 - If the difference is also equal, participants share the rank.
 
 ## 4. Data Model
@@ -136,28 +165,38 @@ The settings_json column on competitions stores all configurable options:
 
 ```json
 {
-  "max_lists_per_use": 1,
-  "scoring_mode": ["round_advancemen", "correct_winner"],
-  "seeding_bonus_enable": true,
-  "seeding_bonus_points": 5,
-  "reseed_mod": "slot_based",
-  "round_points": {
-    "first_four": 1,
-    "round_of_64": 2,
+  "max_lists_per_user": 1,
+  "lock_mode": "before_first_four",
+  "scoring_mode": ["correct_winner", "round_advancement"],
+  "seeding_bonus_enabled": true,
+  "seeding_bonus_points": {
+    "first_four": 0,
+    "round_of_64": 0,
     "round_of_32": 3,
     "sweet_16": 5,
     "elite_8": 8,
     "final_four": 13,
-    "championship": 21
+    "championship_runner_up": 18,
+    "championship_winner": 25
+  },
+  "reseed_mode": "fixed",
+  "round_points": {
+    "first_four": 1,
+    "round_of_64": 0,
+    "round_of_32": 2,
+    "sweet_16": 3,
+    "elite_8": 5,
+    "final_four": 8,
+    "championship": 13
   },
   "correct_winner_points": {
     "first_four": 1,
-    "round_of_64": 1,
-    "round_of_32": 2,
-    "sweet_16": 4,
-    "elite_": 8,
-    "final_four": 16,
-    "championship": 32
+    "round_of_64": 2,
+    "round_of_32": 4,
+    "sweet_16": 8,
+    "elite_8": 16,
+    "final_four": 32,
+    "championship": 64
   }
 }
 ```
@@ -172,19 +211,26 @@ When a user creates or updates their ranking list (before lock), the system reso
 - Step 2: For each First Four matchup, identify the two schools in those slots and compare their positions in the user's
   ranking list. The lower rank number (higher-ranked school) advances to the Round of 64 slot.
 - Step 3: Proceed round by round. In each matchup, the school with the lower rank number in the user's list advances.
-- Step 4: If reseeding is enabled for a competition, after each round's actual results are known, surviving schools are
-  redistributed into fresh bracket slots ordered by their original rank position in the user's list before resolving the
-  next round.
+- Step 4: If `reseed_by_ranking` is enabled for a competition, after each round's actual results are imported, scan all
+  future predicted matchups. For any matchup where one or more teams have been eliminated in reality, replace the
+  eliminated team with the actual advancing team and re-evaluate the matchup winner by comparing the two teams'
+  positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
 
 ### 5.2 Scoring a Bracket
 
-After actual tournament results are imported:
+After actual tournament results are imported, scores are computed in three independent modes and summed:
 
-- For round advancement scoring: compare each school's predicted final round (from the resolved bracket) against the
-  actual round they reached. Award points for each round where prediction ≥ actual, up to the actual round reached.
-- For correct winner scoring: compare each predicted game winner against the actual game winner. Award points forcorrect
-  predictions per round.
-- For seeding bonus: award bonus points where a school reached the exact round the user's ranking predicted.
+- **Correct winner scoring** _(primary)_: for each game played, compare the predicted winner against the actual winner.
+  Award `correct_winner_points[round]` for each correct prediction. With reseeding disabled, a game where the predicted
+  winner was already eliminated earns 0 points. With reseeding enabled, use the updated (reseeded) predictions when
+  checking for correct winners.
+- **Seeding accuracy bonus** _(optional)_: award `seeding_bonus_points[round]` when a school exits the tournament in the
+  exact round predicted by the user's original resolved bracket. A school that advances past their predicted exit round
+  earns no bonus. Uses original predictions only — not reseeded matchups. `championship_winner` and
+  `championship_runner_up` are tracked separately.
+- **Round advancement scoring** _(supplemental)_: for each school that is an original slot occupant (not a reseeded
+  replacement), award `round_points[round]` for each round they actually reach beyond the Round of 64. Points are
+  cumulative (a Sweet 16 appearance earns Round of 32 + Sweet 16 points). Based on original predictions only.
 - Combined score = Men's bracket score + Women's bracket score.
 - Tiebreaker value = `|Men's score − Women's score|` (smaller is better).
 
@@ -192,7 +238,8 @@ After actual tournament results are imported:
 
 ### 6.1 Tournament Field Import
 
-Prior to the tournament, an admin triggers an import to populate the schools and bracket_slots tables for the new season. Potential sources:
+Prior to the tournament, an admin triggers an import to populate the schools and bracket_slots tables for the new
+season. Potential sources:
 
 - NCAA.com official bracket data
 - ESPN API (bracket and team data endpoints)
@@ -281,10 +328,12 @@ All three providers are configured as NextAuth.js providers with client ID and s
 
 The following items should be confirmed before implementation begins:
 
-- Which external API will be the primary source for tournament field data and live results (ESPN API requires a key; NCAA.com has unofficial endpoints)?
+- Which external API will be the primary source for tournament field data and live results (ESPN API requires a key;
+  NCAA.com has unofficial endpoints)?
 - Should the application support multiple tournament seasons, or is it a fresh deployment each year?
 - Is there a designated admin user, and how is admin access granted (hard-coded email, role in DB)?
-- Should competitions support a Finals prediction bonus (e.g., predict the combined championship game score for a special tiebreaker)?
+- Should competitions support a Finals prediction bonus (e.g., predict the combined championship game score for a
+  special tiebreaker)?
 - What is the expected launch timeline relative to Selection Sunday and tournament start?
 
 _End of Design Document_

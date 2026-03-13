@@ -10,10 +10,9 @@ type RouteContext = { params: Promise<{ id: string }> };
 export async function GET(_req: Request, { params }: RouteContext): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json(
-      { data: null, error: "Unauthorized" } satisfies ApiResponse<null>,
-      { status: 401 },
-    );
+    return Response.json({ data: null, error: "Unauthorized" } satisfies ApiResponse<null>, {
+      status: 401,
+    });
   }
 
   const { id } = await params;
@@ -32,14 +31,13 @@ export async function GET(_req: Request, { params }: RouteContext): Promise<Resp
   if (!list) {
     return Response.json(
       { data: null, error: "Ranking list not found" } satisfies ApiResponse<null>,
-      { status: 404 },
+      { status: 404 }
     );
   }
   if (list.userId !== session.user.id) {
-    return Response.json(
-      { data: null, error: "Forbidden" } satisfies ApiResponse<null>,
-      { status: 403 },
-    );
+    return Response.json({ data: null, error: "Forbidden" } satisfies ApiResponse<null>, {
+      status: 403,
+    });
   }
 
   const result: RankingListDetail = {
@@ -76,10 +74,9 @@ export async function GET(_req: Request, { params }: RouteContext): Promise<Resp
 export async function PATCH(request: Request, { params }: RouteContext): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json(
-      { data: null, error: "Unauthorized" } satisfies ApiResponse<null>,
-      { status: 401 },
-    );
+    return Response.json({ data: null, error: "Unauthorized" } satisfies ApiResponse<null>, {
+      status: 401,
+    });
   }
 
   const { id } = await params;
@@ -92,29 +89,26 @@ export async function PATCH(request: Request, { params }: RouteContext): Promise
   if (!list) {
     return Response.json(
       { data: null, error: "Ranking list not found" } satisfies ApiResponse<null>,
-      { status: 404 },
+      { status: 404 }
     );
   }
   if (list.userId !== session.user.id) {
-    return Response.json(
-      { data: null, error: "Forbidden" } satisfies ApiResponse<null>,
-      { status: 403 },
-    );
+    return Response.json({ data: null, error: "Forbidden" } satisfies ApiResponse<null>, {
+      status: 403,
+    });
   }
   if (isRankingListLocked(list.season, list.lockMode)) {
-    return Response.json(
-      { data: null, error: "Rankings are locked" } satisfies ApiResponse<null>,
-      { status: 403 },
-    );
+    return Response.json({ data: null, error: "Rankings are locked" } satisfies ApiResponse<null>, {
+      status: 403,
+    });
   }
 
   const body = (await request.json()) as { name?: string };
   const name = (body.name ?? "").trim();
   if (!name) {
-    return Response.json(
-      { data: null, error: "Name is required" } satisfies ApiResponse<null>,
-      { status: 400 },
-    );
+    return Response.json({ data: null, error: "Name is required" } satisfies ApiResponse<null>, {
+      status: 400,
+    });
   }
 
   const updated = await db.rankingList.update({ where: { id }, data: { name } });
@@ -130,10 +124,9 @@ export async function PATCH(request: Request, { params }: RouteContext): Promise
 export async function DELETE(_req: Request, { params }: RouteContext): Promise<Response> {
   const session = await auth();
   if (!session?.user?.id) {
-    return Response.json(
-      { data: null, error: "Unauthorized" } satisfies ApiResponse<null>,
-      { status: 401 },
-    );
+    return Response.json({ data: null, error: "Unauthorized" } satisfies ApiResponse<null>, {
+      status: 401,
+    });
   }
 
   const { id } = await params;
@@ -146,14 +139,13 @@ export async function DELETE(_req: Request, { params }: RouteContext): Promise<R
   if (!list) {
     return Response.json(
       { data: null, error: "Ranking list not found" } satisfies ApiResponse<null>,
-      { status: 404 },
+      { status: 404 }
     );
   }
   if (list.userId !== session.user.id) {
-    return Response.json(
-      { data: null, error: "Forbidden" } satisfies ApiResponse<null>,
-      { status: 403 },
-    );
+    return Response.json({ data: null, error: "Forbidden" } satisfies ApiResponse<null>, {
+      status: 403,
+    });
   }
   if (list.competitionEntries.length > 0) {
     return Response.json(
@@ -161,7 +153,7 @@ export async function DELETE(_req: Request, { params }: RouteContext): Promise<R
         data: null,
         error: "Cannot delete a ranking list that has been submitted to a competition.",
       } satisfies ApiResponse<null>,
-      { status: 409 },
+      { status: 409 }
     );
   }
 
@@ -169,4 +161,3 @@ export async function DELETE(_req: Request, { params }: RouteContext): Promise<R
 
   return Response.json({ data: { id }, error: null } satisfies ApiResponse<{ id: string }>);
 }
-
