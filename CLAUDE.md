@@ -284,27 +284,28 @@ type SeedingBonusPointMap = {
 - Cache results in a scores summary table; do not recompute on every leaderboard read
 - Tiebreaker value = `Math.abs(mens_score - womens_score)` — lower is better
 - Points are earned based on `competition_settings` for each competition entry:
-  - When `lock_mode = "before_round_of_64"`: no points are awarded for First Four games in any scoring mode; `first_four` values in all point maps are ignored
-  - Round advancement points: awarded for each school that reaches the predicted round or beyond.
-    - Points are only awarded for the original team in the slot, not for any team that later inherits that slot due to reseeding
-    - No points for the first round (Round of 64) since all teams start there, except for the First Four play-in games which can earn points if predicted correctly
-    - Points are awarded for each round reached, so if a team reaches the Elite 8, they earn points for Round of 32, Sweet 16, and Elite 8
-    - Organizer may select the points for each round in the competition settings.
-      - It is recommended that this value be less than the Seeding accuracy bonus.
-  - Correct winner points: awarded for each game where the predicted winner matches the actual winner
+  - When `lock_mode = "before_round_of_64"`: no points are awarded for First Four games in any scoring mode; `first_four` values in all point maps are ignored.
+  - Correct winner points: awarded for each game where the predicted winner matches the actual winner.
+    - This is the traditional method of scoring points for tournament brackets, and thus **should** be worth more than round advancement points or seeding bonus to reward correct game-by-game predictions.  The organizer is under no obligation to follow this recommendation.
     - Organizer sets the points for each round in the competition settings, so a correct pick in the championship game can be worth more than a correct pick in the first round.
     - If a participant's bracket predicted School A to beat School B in the Round of 64, and that game actually resulted in School A winning, the participant earns points for that correct prediction.
+    - If reseeding is disabled, then a matchup where an eliminated team was predicted to win would simply not earn points.  This is the traditional method of scoring brackets, where if a selected team is eliminated, all of that team's future predicted matchups are wrong and earn no points.
     - If reseeding is enabled, and a participant's predicted winner of a matchup is eliminated, later rounds are recalculated based on the surviving teams, but points for correct winners are still awarded based on the original rankings.
       - For example, if a participant predicted an 8 team bracket with the official seeds ranked 5, 6, 2, 1, 3, 4, 8, 7, and the 8 seed beats the 1 seed, and the 4 seed beats the 5 seed, then the 8 seed will play the 4 seed in the next round. Since the participant originally ranked the 4 seed higher than the 8 seed, the participant's predicted winner of that matchup would be the 4 seed. If the 4 seed then beats the 8 seed, the participant would earn points for that matchup since their predicted winner (the 4 seed) won.
-    - If reseeding is disabled, then a matchup where an eliminated team was predicted to win would simply not earn points.
-  - Seeding accuracy bonus: awarded when a team exits the tournament in the exact round predicted by the user's resolved bracket
-    - The predicted exit round is determined by running bracket resolution against the user's ranking — whichever round a team is predicted to lose in is their target round
-    - "Winning the championship" is its own exit point: a team predicted to win it all earns `championship_winner` bonus points only if they actually win the championship
-    - A team predicted to lose in the championship game earns `championship_runner_up` bonus points only if they are the actual runner-up
-    - Requires that the team NOT advance past the round predicted for elimination
-    - For example, if a user ranked a team #1 (predicting they win the championship) but they lose in the Elite 8, they would NOT earn the seeding accuracy bonus
-    - It is recommended that this value be less than the Correct winner points
-    - This bonus is based on the original ranking position of the teams, not on reseeded teams
+  - Seeding accuracy bonus: awarded when a team exits the tournament in the exact round predicted by the user's resolved bracket.
+    - The predicted exit round is determined by running bracket resolution against the user's ranking — whichever round a team is predicted to lose in is their target round.
+    - "Winning the championship" is its own exit point: a team predicted to win it all earns `championship_winner` bonus points only if they actually win the championship.
+    - A team predicted to lose in the championship game earns `championship_runner_up` bonus points only if they are the actual runner-up.
+    - Requires that the team NOT advance past the round predicted for elimination.
+    - For example, if a user ranked a team #1 (predicting they win the championship) but they lose in the Elite 8, they would NOT earn the seeding accuracy bonus.
+    - It is recommended that this value be less than the correct winner points, but not required.
+    - This bonus is based on the original ranking position of the teams, not on reseeded teams.
+  - Round advancement bonus: awarded for each school that reaches the predicted round or beyond.
+    - Points are only awarded based on the original seeding, not for any team that later inherits that slot due to reseeding.
+    - No points for the Round of 64, since all teams start there, except for the First Four play-in games which can earn points if predicted correctly in a bracket locked before the First Four.
+    - Points are awarded for each round reached, so if a team reaches the Elite 8, they earn points for Round of 32, Sweet 16, and Elite 8.
+    - Organizer may select the points for each round in the competition settings.
+      - It is recommended that this value be less than the seeding accuracy bonus and less than the correct winner points, but not required.
 
 ---
 
@@ -354,7 +355,7 @@ Documentation must be kept in sync with the code. This applies to every session,
 
 ---
 
-## Open Questions (resolve before implementing)
+## Resolved Questions
 
 - [x] Which ESPN API endpoint / key will be used for live results?
   - No key needed. APIs are internal, but are commonly used and documented.
@@ -398,6 +399,31 @@ Documentation must be kept in sync with the code. This applies to every session,
 - [x] Database host — Supabase or Railway?
   - Railway. Plain PostgreSQL, no extra connection pooling config required, no inactivity pauses, and no unused platform features. Standard `DATABASE_URL` connection string works with Prisma out of the box.
 
-```
+## External Configuration
 
-```
+These configuration steps occur outside the project and likely require human intervention to implement.  They are documented here to track their progress and to provide steps that would likely need to be repeated if setting up a separate development environment.  They should be added to the readme section on development environment setup.
+
+- [x] Set up Google Authentication.
+  - I already have a Google Cloud Account, so I don't have the setup steps for that.  Just be aware that if some things don't work dor some unknown reason, it is usually because there is a legal notice somewhere that you didn't accept.  That has burned me before.
+  - Set up a new Project in the Google Cloud Console, if you don't already have one that you want to use.
+  - Go to the "APIs & Services" > "OAuth Consent Screen" page for your project.  It will take you to the Google Auth Platform Overview.
+  - Go to the Branding tab and fill in the required fields.  You can add your email and a product name, but you don't need to fill in any of the other fields for testing purposes. (You can't use localhost here anyway.)
+  - Note that the App Name from this page will be shown on the Google sign-in prompt, so make it descriptive of your app.  If you provide privacy policy and terms of service URLs, those will be shown on the consent screen as well.
+  - Save and continue, then back to the dashboard.
+  - Go to the "APIs & Services" > "Credentials" page for your project.
+  - Click "Create Credentials" > "OAuth client ID".
+  - Select "Web application" as the application type.
+  - Add `http://localhost:3000` to the "Authorized JavaScript origins".
+  - Add `http://localhost:3000/api/auth/callback/google` to the "Authorized redirect URIs".
+  - Click "Create" and note the generated Client ID and Client Secret.  These will be used in the `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` environment variables.
+- [ ] Set up Apple Authentication.
+- [ ] Set up Microsoft Authentication.
+- [ ] Create Vercel project and configure environment variables.
+- [ ] Create Railway project, provision PostgreSQL database, and connect it to Vercel.
+- [x] Set up PostgesQL locally for development and create a `.env.local` with the connection string.
+  - I used a docker image for this.
+    ```shell
+    docker pull dhi.io/postgres:18-alpine3.22-dev
+    docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres  dhi.io/postgres:18-alpine3.22-dev
+    # Use the connection string `postgresql://postgres:postgres@localhost:5432/march-madness` in `.env.local`
+    ```
