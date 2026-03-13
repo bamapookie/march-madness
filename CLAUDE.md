@@ -195,11 +195,11 @@ notifications          — In-app notifications (polled client-side)
 
 **Bracket resolution:** Given a ranking list and the official NCAA bracket slots, simulate every game by advancing the school with the lower rank number (higher rank = smaller number). Includes First Four play-in games.
 
-**Reseeding (slot-based):** After an upset, the winning school inherits the loser's bracket slot and continues from there.
+**Fixed bracket (`reseed_mode = "fixed"`):** The predicted bracket is never updated. When real results deviate from predictions, eliminated teams' future game slots simply earn no points.
 
 **Reseeding (by original ranking):** When real results eliminate a team that was predicted to appear in a future matchup, the actual advancing team replaces them in that slot. The matchup winner is then re-evaluated by comparing the two teams' rank positions in the user's original ranking. Only matchups involving at least one eliminated team are updated; matchups where both predicted teams are still alive retain their original prediction.
 
-**Scoring — round advancement:** Points for correctly predicting a school reaches a given round, regardless of path.
+**Scoring — round advancement:** Points for each game a school wins in rounds where the original bracket predicted them to win, based on original bracket resolution. Uses the same per-round map semantics as Correct Winner. Gives additional scoring weight to original predictions independently of how reseeding updates game-slot matchups.
 
 **Scoring — correct winner:** Points for correctly predicting the winner of each specific game.
 
@@ -218,13 +218,16 @@ type CompetitionSettings = {
   scoring_mode: Array<"round_advancement" | "correct_winner">;
   seeding_bonus_enabled: boolean;
   seeding_bonus_points: SeedingBonusPointMap;
-  reseed_mode: "slot_based" | "reseed_by_ranking";
+  reseed_mode: "fixed" | "reseed_by_ranking";
   round_points: RoundPointMap;
   correct_winner_points: RoundPointMap;
 };
 
 // Used for round_points and correct_winner_points.
-// "championship" covers both the winner and loser of the championship game.
+// Each key represents points for *winning* a game in that round.
+// round_points is capped at the team's predicted exit round (games they were predicted to win).
+// "championship" = winning the championship game; for round_points this only applies
+// to teams originally predicted to win the championship.
 type RoundPointMap = {
   first_four: number;
   round_of_64: number;
@@ -285,14 +288,14 @@ type SeedingBonusPointMap = {
 - Tiebreaker value = `Math.abs(mens_score - womens_score)` — lower is better
 - Points are earned based on `competition_settings` for each competition entry:
   - When `lock_mode = "before_round_of_64"`: no points are awarded for First Four games in any scoring mode; `first_four` values in all point maps are ignored.
-  - Correct winner points: awarded for each game where the predicted winner matches the actual winner.
-    - This is the traditional method of scoring points for tournament brackets, and thus **should** be worth more than round advancement points or seeding bonus to reward correct game-by-game predictions.  The organizer is under no obligation to follow this recommendation.
+  - Correct Winner Points: awarded for each game where the predicted winner matches the actual winner.
+    - This is the traditional method of scoring points for tournament brackets, and thus **should** be worth more than Round Advancement Bonus or Seeding Bonus to reward correct game-by-game predictions.  The organizer is under no obligation to follow this recommendation.
     - Organizer sets the points for each round in the competition settings, so a correct pick in the championship game can be worth more than a correct pick in the first round.
     - If a participant's bracket predicted School A to beat School B in the Round of 64, and that game actually resulted in School A winning, the participant earns points for that correct prediction.
-    - If reseeding is disabled, then a matchup where an eliminated team was predicted to win would simply not earn points.  This is the traditional method of scoring brackets, where if a selected team is eliminated, all of that team's future predicted matchups are wrong and earn no points.
+    - When `reseed_mode = "fixed"`, scoring predictions are not updated, so a matchup where an eliminated team was predicted to win will simply not earn points. This is the traditional method of scoring brackets, where if a selected team is eliminated, all of that team's future predicted matchups are wrong and earn no points.
     - If reseeding is enabled, and a participant's predicted winner of a matchup is eliminated, later rounds are recalculated based on the surviving teams, but points for correct winners are still awarded based on the original rankings.
       - For example, if a participant predicted an 8 team bracket with the official seeds ranked 5, 6, 2, 1, 3, 4, 8, 7, and the 8 seed beats the 1 seed, and the 4 seed beats the 5 seed, then the 8 seed will play the 4 seed in the next round. Since the participant originally ranked the 4 seed higher than the 8 seed, the participant's predicted winner of that matchup would be the 4 seed. If the 4 seed then beats the 8 seed, the participant would earn points for that matchup since their predicted winner (the 4 seed) won.
-  - Seeding accuracy bonus: awarded when a team exits the tournament in the exact round predicted by the user's resolved bracket.
+  - Seeding Accuracy Bonus: awarded when a team exits the tournament in the exact round predicted by the user's resolved bracket.
     - The predicted exit round is determined by running bracket resolution against the user's ranking — whichever round a team is predicted to lose in is their target round.
     - "Winning the championship" is its own exit point: a team predicted to win it all earns `championship_winner` bonus points only if they actually win the championship.
     - A team predicted to lose in the championship game earns `championship_runner_up` bonus points only if they are the actual runner-up.
@@ -300,12 +303,15 @@ type SeedingBonusPointMap = {
     - For example, if a user ranked a team #1 (predicting they win the championship) but they lose in the Elite 8, they would NOT earn the seeding accuracy bonus.
     - It is recommended that this value be less than the correct winner points, but not required.
     - This bonus is based on the original ranking position of the teams, not on reseeded teams.
-  - Round advancement bonus: awarded for each school that reaches the predicted round or beyond.
-    - Points are only awarded based on the original seeding, not for any team that later inherits that slot due to reseeding.
-    - No points for the Round of 64, since all teams start there, except for the First Four play-in games which can earn points if predicted correctly in a bracket locked before the First Four.
-    - Points are awarded for each round reached, so if a team reaches the Elite 8, they earn points for Round of 32, Sweet 16, and Elite 8.
-    - Organizer may select the points for each round in the competition settings.
-      - It is recommended that this value be less than the seeding accuracy bonus and less than the correct winner points, but not required.
+  - Round Advancement Bonus: awarded for each game a team wins, for rounds where the original bracket predicted them to win.
+    - The predicted exit round is determined by the original bracket resolution against the user's ranking — the round a team was predicted to *lose* in. Points are earned for each game won in rounds before that predicted exit.
+    - Uses the same per-round map semantics as Correct Winner Points: `round_points.round_of_64` is earned for winning a Round of 64 game, `round_points.round_of_32` for winning a Round of 32 game, and so on — but only for rounds where the team was originally predicted to win.
+    - A team predicted to lose in the Elite 8 earns Round of 64 + Round of 32 + Sweet 16 points (the games they were predicted to win). The Elite 8 is the predicted loss round and earns no Round Advancement points.
+    - Points are only awarded based on the original bracket resolution — teams that inherit slots through reseeding do not earn round advancement bonus points.
+    - This mode is only meaningful when `reseed_mode = "reseed_by_ranking"` is active. When `reseed_mode = "fixed"`, scoring predictions are not updated and Round Advancement produces results equivalent to Correct Winner, so organizers should not use both modes simultaneously unless using `reseed_by_ranking`.
+    - When `lock_mode = "before_round_of_64"`: no First Four points are awarded (same as other modes).
+    - Organizer sets the points per round in the competition settings.
+      - It is recommended that this value be less than correct winner points, but not required.
 
 ---
 
@@ -351,6 +357,7 @@ Documentation must be kept in sync with the code. This applies to every session,
 - **Resolve open questions in place** — when an open question in `CLAUDE.md` is answered (by the user or by implementation), mark it `[x]` and record the answer inline. Never delete answered questions.
 - **Keep Key Commands accurate** — if a new `npm run` script is added or changed, update the Key Commands section in both `CLAUDE.md` and `README.md`.
 - **Commit docs with the code** — documentation changes must be committed in the same session as the code changes they describe, not deferred to a later commit.
+- **Commit after every prompt** — at the end of every response, stage all modified files and produce a single commit with a short, descriptive message summarising what changed. Leave the working tree clean before yielding back to the user.
 - **No stale milestone status** — the milestone status table in `README.md` must match the `✅ / 🔲` state of the milestones in `CLAUDE.md` at all times.
 
 ---
@@ -398,6 +405,8 @@ Documentation must be kept in sync with the code. This applies to every session,
   - Partial adjustment only. After each round's real results are imported, any future predicted matchup where one or more teams have been eliminated is updated: the eliminated team is replaced with the actual advancing team, and the matchup winner is re-evaluated using the two teams' rank positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
 - [x] Database host — Supabase or Railway?
   - Railway. Plain PostgreSQL, no extra connection pooling config required, no inactivity pauses, and no unused platform features. Standard `DATABASE_URL` connection string works with Prisma out of the box.
+- [x] Round Advancement Bonus — what is its purpose, and how does it differ from Correct Winner?
+  - Its purpose is to give additional scoring weight to original predictions independently of how `reseed_by_ranking` updates game-slot matchups. CW evaluates the (possibly reseeded) predicted winner of each specific game slot; RA always tracks original predicted team advancement, capped at the predicted exit round. They are only meaningfully distinct when `reseed_mode = "reseed_by_ranking"` is active. When `reseed_mode = "fixed"`, scoring predictions are not updated and RA produces equivalent results to CW; organizers should not combine both modes in that case.
 
 ## External Configuration
 
@@ -427,3 +436,4 @@ These configuration steps occur outside the project and likely require human int
     docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres  dhi.io/postgres:18-alpine3.22-dev
     # Use the connection string `postgresql://postgres:postgres@localhost:5432/march-madness` in `.env.local`
     ```
+- [ ] Connect to the ESPN API and verify that results can be imported successfully.

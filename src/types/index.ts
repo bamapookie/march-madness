@@ -9,7 +9,12 @@ export type ApiResponse<T> = {
 
 /**
  * Points awarded per round for `round_points` and `correct_winner_points`.
- * "championship" covers both the winner and runner-up of the championship game.
+ * Each key represents points for *winning* a game in that round.
+ * - For `correct_winner_points`: awarded when the predicted slot winner actually wins.
+ * - For `round_points`: awarded when a team wins a game in a round where they were
+ *   originally predicted to win (capped at their predicted exit round).
+ * `championship` = winning the championship game. For `round_points`, this only
+ * applies to teams originally predicted to win the championship.
  */
 export type RoundPointMap = {
   first_four: number;
@@ -52,20 +57,29 @@ export type CompetitionSettings = {
    * - "before_round_of_64": locks after First Four results; no First Four points awarded.
    */
   lock_mode: "before_first_four" | "before_round_of_64";
-  /** Which scoring modes are active. At least one must be selected. */
+  /**
+   * Which scoring modes are active. At least one must be selected.
+   * - "correct_winner": points for each game whose predicted winner actually won (traditional bracket scoring).
+   * - "round_advancement": points for each round a team actually reaches, up to their predicted exit
+   *   round, based on original bracket resolution. Gives additional scoring weight to original
+   *   predictions independently of reseeding. Only meaningfully distinct from correct_winner when
+   *   reseed_mode = "reseed_by_ranking"; do not combine both modes when using fixed.
+   */
   scoring_mode: Array<"round_advancement" | "correct_winner">;
-  /** Whether the seeding accuracy bonus is enabled. */
-  seeding_bonus_enabled: boolean;
-  /** Per-round bonus points for correctly predicting a team's exit round. */
-  seeding_bonus_points: SeedingBonusPointMap;
+  // ...existing code...
   /**
    * How the bracket is updated when real results deviate from predictions.
-   * - "slot_based": winning team inherits the loser's bracket slot.
+   * - "fixed": predictions are never updated; eliminated teams' future game slots earn no points.
    * - "reseed_by_ranking": eliminated teams are replaced by actual advancing
    *   teams; matchup winner re-evaluated by original rank position.
    */
-  reseed_mode: "slot_based" | "reseed_by_ranking";
-  /** Points per round for the round advancement scoring mode. */
+  reseed_mode: "fixed" | "reseed_by_ranking";
+  /**
+   * Points per round for the round advancement scoring mode.
+   * Awarded for each game a team wins in a round where they were originally predicted to win,
+   * based on original bracket resolution. Uses the same per-round map semantics as
+   * `correct_winner_points`; capped at (not including) the predicted exit round.
+   */
   round_points: RoundPointMap;
   /** Points per round for the correct winner scoring mode. */
   correct_winner_points: RoundPointMap;

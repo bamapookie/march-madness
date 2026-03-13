@@ -157,7 +157,7 @@ The settings_json column on competitions stores all configurable options:
     "championship_runner_up": 18,
     "championship_winner": 25
   },
-  "reseed_mode": "slot_based",
+  "reseed_mode": "fixed",
   "round_points": {
     "first_four": 1,
     "round_of_64": 0,

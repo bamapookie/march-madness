@@ -1,3 +1,30 @@
+# Reseeding scenarios
+
+After studying the scoring mechanisms, it appears that we need to rethink the Round advancement bonus.  In the case
+where reseeding is disabled, the logic for the Round advancement bonus is the same as for Correct Winner Points.  So we
+may want to remove Round Advancement Bonus when reseeding is disabled.  Also, when reseeding is enabled, there are a
+number of different cases that we need to figure out how they would be handled when reseeding.  Let's look at one game
+in a later round and determine all the scenarios that could occur with reseeding:
+
+- Both teams from the original seeding are still playing.  The predicted winner does win.  User gets Correct Winner points and the Round Advancement Bonus for the winner and Seeding Accuracy Bonus for the loser.
+- Both teams from the original seeding are still playing.  The predicted winner loses.  User gets no points.
+- The originally predicted winner is still playing, but the originally seeded loser has been eliminated.  The reseeded opponent has a lower rank than the originally predicted winner.  The predicted winner does win.  User gets Correct Winner points and the Round Advancement Bonus points.
+- The originally predicted winner is still playing, but the originally seeded loser has been eliminated.  The reseeded opponent has a lower rank than the originally predicted winner.  The predicted winner loses.  User gets no points.
+- The originally predicted winner has been eliminated, but the originally predicted loser is still playing.  The reseeded opponent has a higher rank than the originally predicted loser.  The predicted winner does win.  User gets Correct Winner points for the winner and the Seeding Accuracy Bonus for the loser.
+- The originally predicted winner has been eliminated, but the originally predicted loser is still playing.  The reseeded opponent has a higher rank than the originally predicted loser.  The predicted winner loses.  User gets no points.
+- Neither originally predicted team is still playing.  The new team with the higher rank wins.  User gets Correct Winner points.
+- Neither originally predicted team is still playing.  The new team with the lower rank wins.  User gets no points.
+
+- The originally predicted winner is still playing, but the originally seeded loser has been eliminated.  The reseeded opponent has a higher rank than the originally predicted winner.  Does the pick flip to the higher ranked team?  If Yes: (User gets points in either case) The newly predicted winner does win.  User gets Correct Winner points.
+- The originally predicted winner is still playing, but the originally seeded loser has been eliminated.  The reseeded opponent has a higher rank than the originally predicted winner.  Does the pick flip to the higher ranked team?  If Yes: (User gets points in either case) The newly predicted winner loses. User gets Round Advancement Bonus points.
+- The originally predicted winner has been eliminated, but the originally predicted loser is still playing.  The reseeded opponent has a lower rank than the originally predicted loser.  Does the pick flip to the higher ranked team?  If Yes: (User gets points in either case)  The newly predicted winner does win. User gets Correct Winner points.
+- The originally predicted winner has been eliminated, but the originally predicted loser is still playing.  The reseeded opponent has a lower rank than the originally predicted loser.  Does the pick flip to the higher ranked team?  If Yes: (User gets points in either case)  The newly predicted winner loses. User gets Seeding Accuracy Bonus points.
+- 
+- The originally predicted winner is still playing, but the originally seeded loser has been eliminated.  The reseeded opponent has a higher rank than the originally predicted winner.  Does the pick flip to the higher ranked team?  If No:  The originally predicted winner does win.  User gets Correct Winner points and the Round Advancement Bonus points.
+- The originally predicted winner is still playing, but the originally seeded loser has been eliminated.  The reseeded opponent has a higher rank than the originally predicted winner.  Does the pick flip to the higher ranked team?  If No:  The originally predicted winner loses. User gets no points.
+- The originally predicted winner has been eliminated, but the originally predicted loser is still playing.  The reseeded opponent has a lower rank than the originally predicted loser.  Does the pick flip to the higher ranked team?  If No:  The originally predicted loser does win. User gets no points.
+- The originally predicted winner has been eliminated, but the originally predicted loser is still playing.  The reseeded opponent has a lower rank than the originally predicted loser.  Does the pick flip to the higher ranked team?  If No:  The originally predicted loser loses. Seeding accuracy bonus
+
 # What APIs are available from ESPN to pull the results I need?
 
 The `src/lib/import.ts` file hasn't been created yet. Based on your project's needs (NCAA Men's and Women's tournament results), here's a rundown of the relevant **unofficial ESPN APIs** — ESPN doesn't publish an official public API, but their internal endpoints are widely used and well-documented by the community:
