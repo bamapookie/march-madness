@@ -40,13 +40,18 @@ Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round o
 - Scoring engine — round advancement, correct winner, seeding accuracy bonus (`src/lib/scoring.ts`)
 - Unit tests for both (50 tests, 2 files)
 
-### 0.4.0 — ESPN Import & Season Setup _(data foundation)_
+### 0.4.0 — ESPN Import & Season Setup ✅ _complete_
 
 - ESPN API client — schools, bracket slots, scoreboard, tournament results (`src/lib/import.ts`)
+- `discoverTournamentId` — auto-discovers ESPN tournament ID from scoreboard; stores on season row
 - Admin API route — manual import trigger (`src/app/api/admin/import/route.ts`)
+- Admin season route — update ESPN tournament IDs (`src/app/api/admin/season/route.ts`)
 - Vercel Cron Job — scheduled polling (`src/app/api/cron/import-results/route.ts`, `vercel.json`)
 - Dev script — `npm run import:results` (`src/scripts/import-results.ts`)
-- Admin page — import status, stale data warnings, manual trigger (`src/app/admin`)
+- Admin page — import status, stale data warnings, ESPN ID editor, manual trigger (`src/app/admin`)
+- `src/lib/admin.ts` — `isAdmin()` helper driven by `ADMIN_EMAILS` env var
+- `src/types/espn.ts` — strict ESPN API response types (no `any`)
+- Schema additions: `mensEspnTournamentId`/`womensEspnTournamentId` on `TournamentSeason`; `espnEventId` on `BracketSlot`; new `ImportLog` model with `ImportStatus` enum
 
 ### 0.5.0 — Competitions _(group play)_
 
@@ -441,8 +446,10 @@ milestone is delivered.
   - Fresh deployment each year. Data model supports multi-season, but initial launch will focus on a single season to
     reduce complexity.
 - [x] How is admin access granted — hard-coded email or DB role?
-  - For the initial release, admin access will be based on code and backend access. There will be no UI for managing
-    admin users. In the future, we could add an `is_admin` flag to the `users` table and build an admin management UI.
+  - For the initial release, admin access is driven by the `ADMIN_EMAILS` environment variable (comma-separated list
+    of email addresses). `src/lib/admin.ts` exports `isAdmin(email)` which reads this variable at runtime. This avoids
+    hard-coded values in source code and allows easy configuration in Vercel without a code deploy. In the future, we
+    could add an `is_admin` flag to the `users` table and build an admin management UI.
 - [x] Finals score prediction bonus tiebreaker?
   - Yes, the tiebreaker will be based on the absolute difference between the Men's and Women's bracket scores. The user
     with the smaller difference wins the tiebreaker.
@@ -520,4 +527,4 @@ separate development environment. They should be added to the readme section on 
     docker run -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_USER=postgres  dhi.io/postgres:18-alpine3.22-dev
     # Use the connection string `postgresql://postgres:postgres@localhost:5432/march-madness` in `.env.local`
     ```
-- [ ] Connect to the ESPN API and verify that results can be imported successfully.
+- [x] Connect to the ESPN API and verify that results can be imported successfully.

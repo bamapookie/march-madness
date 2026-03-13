@@ -32,6 +32,11 @@ enum LockMode {
   BEFORE_ROUND_OF_64
 }
 
+enum ImportStatus {
+  SUCCESS
+  FAILURE
+}
+
 // ─── Auth.js v5 Required Models ──────────────────────────────────────────────
 
 model User {
@@ -101,17 +106,20 @@ model VerificationToken {
 // ─── Tournament Season ───────────────────────────────────────────────────────
 
 model TournamentSeason {
-  id              String   @id @default(cuid())
-  name            String   @unique // e.g. "2026"
-  firstFourLockAt DateTime
-  roundOf64LockAt DateTime
-  isActive        Boolean  @default(false)
+  id                     String  @id @default(cuid())
+  name                   String  @unique // e.g. "2026"
+  firstFourLockAt        DateTime
+  roundOf64LockAt        DateTime
+  isActive               Boolean  @default(false)
+  mensEspnTournamentId   String? // ESPN tournament ID for Men's bracket; set by admin or auto-discovered
+  womensEspnTournamentId String? // ESPN tournament ID for Women's bracket; set by admin or auto-discovered
 
   schools           School[]
   bracketSlots      BracketSlot[]
   rankingLists      RankingList[]
   competitions      Competition[]
   tournamentResults TournamentResult[]
+  importLogs        ImportLog[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -153,15 +161,16 @@ model School {
 // ─── Bracket Slots ───────────────────────────────────────────────────────────
 
 model BracketSlot {
-  id         String  @id @default(cuid())
-  seasonId   String
-  gender     Gender
-  round      Round
-  slotIndex  Int // 0-based position within this round+gender combination
-  region     String? // null for Final Four and Championship
-  seed       Int? // initial seed assigned to this slot (1–16, or 11/16 for First Four)
-  schoolId   String? // school initially seeded into this slot
-  nextSlotId String? // slot the winner advances into; null for Championship
+  id          String  @id @default(cuid())
+  seasonId    String
+  gender      Gender
+  round       Round
+  slotIndex   Int // 0-based position within this round+gender combination
+  region      String? // null for Final Four and Championship
+  seed        Int? // initial seed assigned to this slot (1–16, or 11/16 for First Four)
+  schoolId    String? // school initially seeded into this slot
+  nextSlotId  String? // slot the winner advances into; null for Championship
+  espnEventId String? @unique // ESPN event/game ID; set on game slots after scheduling; null for leaf slots
 
   season            TournamentSeason   @relation(fields: [seasonId], references: [id])
   school            School?            @relation(fields: [schoolId], references: [id])
@@ -356,3 +365,23 @@ model EntryScore {
 
   @@map("entry_scores")
 }
+
+// ─── Import Log ───────────────────────────────────────────────────────────────
+
+model ImportLog {
+  id                   String       @id @default(cuid())
+  seasonId             String
+  status               ImportStatus
+  schoolsUpserted      Int          @default(0)
+  bracketSlotsUpserted Int          @default(0)
+  resultsUpserted      Int          @default(0)
+  errorMessage         String?
+  startedAt            DateTime     @default(now())
+  completedAt          DateTime?
+
+  season TournamentSeason @relation(fields: [seasonId], references: [id])
+
+  @@index([seasonId])
+  @@map("import_logs")
+}
+
