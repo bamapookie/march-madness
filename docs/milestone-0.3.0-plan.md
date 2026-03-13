@@ -491,20 +491,25 @@ export function scoreEntry(input: ScoringInput): ScoreResult
 ```typescript
 /**
  * For round advancement scoring: maps the game's slot round to the
- * RoundPointMap key earned by the winner (the round they are advancing INTO).
+ * RoundPointMap key earned by the winner.
  *
- * KEY SEMANTIC: round_points.X means "points for REACHING round X."
- *   Winning a FIRST_FOUR game  → team reaches R64 → "first_four" points
- *   Winning a ROUND_OF_64 game → team reaches R32 → "round_of_32" points
- *   Winning a ROUND_OF_32 game → team reaches S16 → "sweet_16" points
- *   Winning a SWEET_16 game    → team reaches E8  → "elite_8" points
- *   Winning an ELITE_8 game    → team reaches F4  → "final_four" points
- *   Winning a FINAL_FOUR game  → team reaches Champ game → "championship" points
- *   Winning the CHAMPIONSHIP   → null (no additional round_points; use seeding bonus)
+ * KEY SEMANTIC: round_points.X means "points for WINNING a game in round X."
+ * This is a direct 1:1 mapping identical to correctWinnerKey — the two functions
+ * exist separately because they index different point maps (round_points vs.
+ * correct_winner_points) and carry different semantic intent.
  *
- * round_points.round_of_64 is never returned — conventionally 0 (all teams start in R64).
+ *   Winning a FIRST_FOUR game  → "first_four" points
+ *   Winning a ROUND_OF_64 game → "round_of_64" points
+ *   Winning a ROUND_OF_32 game → "round_of_32" points
+ *   Winning a SWEET_16 game    → "sweet_16" points
+ *   Winning an ELITE_8 game    → "elite_8" points
+ *   Winning a FINAL_FOUR game  → "final_four" points
+ *   Winning the CHAMPIONSHIP   → "championship" points
+ *                                (only earned by the originally-predicted champion
+ *                                 if they actually win; the runner-up was predicted
+ *                                 to LOSE this game so earns no RA championship points)
  */
-function roundAdvancementKey(round: Round): keyof RoundPointMap | null
+function roundAdvancementKey(round: Round): keyof RoundPointMap
 
 /**
  * For correct winner scoring: maps the game's slot round to the
@@ -544,14 +549,14 @@ function scoreGender(input: GenderScoringInput, settings: CompetitionSettings): 
 | `game.round` (game played) | `round_points` key earned by winner |
 |---|---|
 | `FIRST_FOUR` | `"first_four"` |
-| `ROUND_OF_64` | `"round_of_32"` |
-| `ROUND_OF_32` | `"sweet_16"` |
-| `SWEET_16` | `"elite_8"` |
-| `ELITE_8` | `"final_four"` |
-| `FINAL_FOUR` | `"championship"` |
-| `CHAMPIONSHIP` | `null` |
+| `ROUND_OF_64` | `"round_of_64"` |
+| `ROUND_OF_32` | `"round_of_32"` |
+| `SWEET_16` | `"sweet_16"` |
+| `ELITE_8` | `"elite_8"` |
+| `FINAL_FOUR` | `"final_four"` |
+| `CHAMPIONSHIP` | `"championship"` |
 
-> `round_points.round_of_64` is never returned by this function. It exists in `RoundPointMap` for structural symmetry with `correct_winner_points` but is effectively unused by the round advancement mode.
+> This is a direct 1:1 mapping, identical to `correctWinnerKey`. The distinction between the two functions is purely in which point map they are used with (`round_points` vs. `correct_winner_points`) and the condition under which they award points (original predicted winner vs. current predicted winner).
 
 ---
 
@@ -587,10 +592,9 @@ For each game G in currentBracket.games:
   // of this game slot actually won in reality.
   if settings.scoring_mode.includes("round_advancement"):
     advKey = roundAdvancementKey(G.round)
-    if advKey !== null:
-      originalGame = originalBracket.games.find(g => g.slotId === G.slotId)
-      if originalGame && originalGame.predictedWinnerId === result.winningSchoolId:
-        roundAdvancement += settings.round_points[advKey]
+    originalGame = originalBracket.games.find(g => g.slotId === G.slotId)
+    if originalGame && originalGame.predictedWinnerId === result.winningSchoolId:
+      roundAdvancement += settings.round_points[advKey]
 
 ─── PER-SCHOOL SEEDING ACCURACY BONUS ─────────────────────────────────────
 // Based entirely on originalBracket. Reseeded replacements are never awarded a bonus.
@@ -699,7 +703,7 @@ defaultSettings: CompetitionSettings = {
   seeding_bonus_enabled: true,
   reseed_mode: "fixed",
   max_lists_per_user: 1,
-  round_points: { first_four: 1, round_of_64: 0, round_of_32: 2, sweet_16: 4, elite_8: 8, final_four: 16, championship: 32 },
+  round_points: { first_four: 1, round_of_64: 2, round_of_32: 4, sweet_16: 8, elite_8: 16, final_four: 32, championship: 64 },
   correct_winner_points: { first_four: 2, round_of_64: 4, round_of_32: 8, sweet_16: 16, elite_8: 32, final_four: 64, championship: 128 },
   seeding_bonus_points: { first_four: 1, round_of_64: 2, round_of_32: 4, sweet_16: 8, elite_8: 16, final_four: 32, championship_runner_up: 64, championship_winner: 128 },
 }
@@ -761,12 +765,12 @@ defaultSettings: CompetitionSettings = {
 
 | Test name | What it verifies |
 |---|---|
-| `awards round_points cumulatively for each round won by original predicted winner` | A predicted to E8 and reaches E8: earns round_of_32 + sweet_16 + elite_8 points |
-| `awards no round_points for rounds the original predicted winner does not reach` | A predicted to reach F4 but loses in S16 → no F4 round_points |
+| `awards round_points cumulatively for each round won by original predicted winner` | A predicted to exit in E8 earns round_of_64 + round_of_32 + sweet_16 points (games they were predicted to WIN; E8 is the predicted loss round and earns no RA points) |
+| `awards no round_points for rounds the original predicted winner does not reach` | A predicted to reach F4 but loses in S16 → earns round_of_64 + round_of_32 only; no S16, E8, or F4 round_points |
 | `does NOT award round_points to reseeded replacement teams` | B replaces A in reseed mode and wins A's original path → 0 round_points for B |
 | `first_four points awarded when lock_mode is before_first_four` | FF winner earns `round_points.first_four` when lock_mode = "before_first_four" |
-| `winning a ROUND_OF_64 game earns round_of_32 key, not round_of_64 key` | Confirms mapping: R64 game → "round_of_32" advancement key |
-| `champion earns all applicable round advancement keys cumulatively` | Champion earns round_of_32 + sweet_16 + elite_8 + final_four + championship keys |
+| `winning a ROUND_OF_64 game earns round_of_64 key (1:1 mapping, same as correctWinnerKey)` | Confirms direct mapping: R64 game → "round_of_64" advancement key |
+| `champion earns round_points for every game won, including championship` | Champion earns round_points for each round won from first game through CHAMPIONSHIP |
 
 #### Seeding accuracy bonus
 
@@ -816,17 +820,17 @@ defaultSettings: CompetitionSettings = {
 
 ---
 
-## 9. Open Questions / Decisions Needed
+## 9. Resolved Questions
 
-1. **`round_points.round_of_64` treatment** — The design above treats this key as conventionally 0 and never assigns it during round advancement scoring (winning a R64 game earns `round_of_32` points instead). Confirm this matches intended organizer behavior. If organizers *should* be able to award points for winning a Round of 64 game specifically under round_advancement mode, the mapping table in §6.3 needs to map `ROUND_OF_64` → `"round_of_64"` instead of `"round_of_32"`.
+1. ✅ **`round_points.round_of_64` treatment** — `roundAdvancementKey` now uses a direct 1:1 mapping identical to `correctWinnerKey`. Winning a Round of 64 game earns `round_points.round_of_64` points. The key is live and organizers should set it to a non-zero value. `CHAMPIONSHIP` maps to `"championship"` (not null).
 
-2. **`applyActualResults` reseed scope** — The algorithm re-evaluates all unplayed future games in ROUND_ORDER. This correctly handles partially-complete rounds (e.g., half of S16 played). Confirm this is the intended behavior.
+2. ✅ **`applyActualResults` reseed scope** — Re-evaluate all unplayed future games in ROUND_ORDER. Partially-complete rounds (e.g., half of S16 played) are handled correctly: already-played slots are copied as-is; unplayed slots are re-evaluated if any contestant has been eliminated.
 
-3. **Ties in `rankMap`** — The `@@unique([rankingListId, rank])` DB constraint prevents ties. Confirm that throwing a descriptive error is the right response if bracket.ts somehow receives a tie (rather than e.g. a deterministic tiebreak by schoolId).
+3. ✅ **Ties in `rankMap`** — Throw a descriptive error. The `@@unique([rankingListId, rank])` DB constraint prevents this in production; the guard exists for defensive correctness.
 
-4. **`fixed` reseeding** — The domain description says predictions are never updated when `reseed_mode = "fixed"`. Confirm that this means `applyActualResults` is simply not called for `fixed` competitions, and `currentBracket` is always identical to `originalBracket`.
+4. ✅ **`fixed` reseeding** — `applyActualResults` is never called for `fixed` competitions. The caller passes `originalBracket` as both `originalBracket` and `currentBracket` in `GenderScoringInput`.
 
-5. **Seeding bonus and still-alive schools** — `computeActualExit` returns `null` for schools still in the tournament. Confirm that schools with `null` actual exit contribute 0 seeding bonus points at any point during the tournament (i.e., bonus is only finalized after elimination/championship).
+5. ✅ **Seeding bonus and still-alive schools** — `computeActualExit` returns `null` for schools not yet eliminated. A `null` actual exit contributes 0 seeding bonus points. The bonus is only awarded after the school is eliminated or wins the championship.
 
-6. **`lock_mode = "before_round_of_64"` and seeding bonus for FIRST_FOUR predicted exits** — If a school is predicted to exit in the First Four (i.e., a play-in team loses), and lock_mode excludes First Four scoring, should `seeding_bonus_points.first_four` also be excluded? The design above says yes (the `isExcludedByLockMode` guard applies to the seeding bonus loop as well). Confirm this is intended.
+6. ✅ **`lock_mode = "before_round_of_64"` and seeding bonus for FIRST_FOUR predicted exits** — The `isExcludedByLockMode` guard applies to the seeding bonus loop as well. A school predicted to exit in the First Four earns no seeding bonus when `lock_mode = "before_round_of_64"`.
 
