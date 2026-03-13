@@ -31,11 +31,11 @@ Milestones 0.1–0.5 must be complete before First Four tip-off. 0.6–0.7 can s
 - Lock enforcement at the API layer (reject mutations after `lock_at`)
 - Ranking list UI — drag-to-reorder, save, view (`src/app/ranking`)
 
-### 0.3.0 — Core Domain Logic _(pure, testable, no DB)_
+### 0.3.0 — Core Domain Logic ✅ _complete_
 
 - Bracket resolution — slot-based and reseed_by_ranking (`src/lib/bracket.ts`)
 - Scoring engine — round advancement, correct winner, seeding accuracy bonus (`src/lib/scoring.ts`)
-- Unit tests for both
+- Unit tests for both (50 tests, 2 files)
 
 ### 0.4.0 — ESPN Import & Season Setup _(data foundation)_
 

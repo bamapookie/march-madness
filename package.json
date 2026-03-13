@@ -10,6 +10,9 @@
     "typecheck": "tsc --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "import:results": "npx tsx src/scripts/import-results.ts",
     "seed:test": "npx tsx src/scripts/seed-test-season.ts"
   },
@@ -33,6 +36,7 @@
     "@types/pg": "^8.18.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitest/coverage-v8": "^4.1.0",
     "babel-plugin-react-compiler": "1.0.0",
     "dotenv": "^17.3.1",
     "eslint": "^9",
@@ -43,6 +47,7 @@
     "prisma": "^7.5.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.0"
   }
 }
