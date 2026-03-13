@@ -1,0 +1,22 @@
+### ESPN Tournament Bracket — Men's
+# Fetches the full bracket structure: regions, seeds, teams, and game tree.
+# Used by importSchools() and importBracketSlots().
+#
+# Set mens_tournament_id in http-client.env.json after it is known (Selection Sunday, ~March 15).
+# If the ID is unknown, run the discovery requests in espn-discovery.http first.
+#
+# Key fields to inspect:
+#   groups[].{name, order, seeds[].{seed, teams[].{id, displayName}}}
+#   bracket.rounds[].{number, displayName, games[].{id, competitors[].{team.id, seed.rank, winner}}}
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/tournaments/{{mens_tournament_id}}
+Accept: application/json
+
+###
+
+### ESPN Tournament Bracket — Women's
+# Same structure as Men's. Set womens_tournament_id in http-client.env.json.
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/tournaments/{{womens_tournament_id}}
+Accept: application/json
+

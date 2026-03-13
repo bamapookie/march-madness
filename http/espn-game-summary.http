@@ -1,0 +1,20 @@
+### Game Summary — Men's
+# Fetches the full box score and game details for a specific ESPN event.
+# Useful for verifying that winner/loser data is correct after games complete.
+# Replace {eventId} with an ID found in the scoreboard response (events[].id).
+#
+# Example usage:
+#   1. Run a scoreboard request from espn-scoreboard.http
+#   2. Copy an event ID from events[].id
+#   3. Paste it into the URL below and run
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event={eventId}
+Accept: application/json
+
+###
+
+### Game Summary — Women's
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/summary?event={eventId}
+Accept: application/json
+

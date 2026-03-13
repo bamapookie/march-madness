@@ -1,0 +1,50 @@
+### Discovery — Men's Scoreboard, March 16 (Selection Sunday)
+# discoverTournamentId() scans these dates looking for NCAA Tournament events.
+# Run these in order until you find events[].competitions[].tournament.id (or leagues[].tournament.id).
+# Copy that ID into http-client.env.json as mens_tournament_id / womens_tournament_id.
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates=20260316
+Accept: application/json
+
+###
+
+### Discovery — Men's Scoreboard, March 17
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates=20260317
+Accept: application/json
+
+###
+
+### Discovery — Men's Scoreboard, March 18
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates=20260318
+Accept: application/json
+
+###
+
+### Discovery — Men's Scoreboard, March 19 (First Four)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates=20260319
+Accept: application/json
+
+###
+
+### Discovery — Men's Scoreboard, March 20 (Round of 64)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates=20260320
+Accept: application/json
+
+###
+
+### Discovery — Women's Scoreboard, March 19 (First Four)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates=20260319
+Accept: application/json
+
+###
+
+### Discovery — Women's Scoreboard, March 20 (Round of 64)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates=20260320
+Accept: application/json
+

@@ -1,0 +1,101 @@
+### ESPN Scoreboard — Men's, First Four (March 19)
+# groups=50 filters to NCAA Men's Tournament events only.
+# Used by importResults() and discoverTournamentId().
+# Look for: events[].id (ESPN event ID), events[].competitions[].tournament.id (tournament ID),
+#           events[].competitions[].competitors[].{team.id, winner}
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates={{date_first_four}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Women's, First Four (March 19)
+# groups=49 filters to NCAA Women's Tournament events only.
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates={{date_first_four}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Men's, Round of 64 (March 20)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates={{date_round_of_64}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Women's, Round of 64 (March 20)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates={{date_round_of_64}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Men's, Round of 32 (March 22)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates={{date_round_of_32}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Women's, Round of 32 (March 22)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates={{date_round_of_32}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Men's, Sweet 16 (March 27)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates={{date_sweet_16}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Women's, Sweet 16 (March 27)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates={{date_sweet_16}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Men's, Elite 8 (March 29)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates={{date_elite_8}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Women's, Elite 8 (March 29)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates={{date_elite_8}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Men's, Final Four (April 4)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates={{date_final_four}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Women's, Final Four (April 4)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates={{date_final_four}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Men's, Championship (April 6)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates={{date_championship}}
+Accept: application/json
+
+###
+
+### ESPN Scoreboard — Women's, Championship (April 6)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates={{date_championship}}
+Accept: application/json
+
