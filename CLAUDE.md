@@ -429,11 +429,12 @@ milestone is delivered.
 
 ### Files to update
 
-| File           | When to update                                                                                                                            |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `CLAUDE.md`    | Any time a milestone is completed, an open question is resolved, a new convention is established, or a key architectural decision is made |
-| `CHANGELOG.md` | On every milestone delivery — move the milestone from _In Progress_ to a dated release entry listing all additions                        |
-| `README.md`    | When commands, environment variables, getting-started steps, or the milestone status table change                                         |
+| File                           | When to update                                                                                                                            |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `CLAUDE.md`                    | Any time a milestone is completed, an open question is resolved, a new convention is established, or a key architectural decision is made |
+| `CHANGELOG.md`                 | On every milestone delivery — move the milestone from _In Progress_ to a dated release entry listing all additions                        |
+| `README.md`                    | When commands, environment variables, getting-started steps, or the milestone status table change                                         |
+| `docs/march-madness-design.md` | When a resolved question changes a design decision, a new feature changes the data model or screen inventory, or the tech stack changes   |
 
 ### Rules
 
@@ -552,7 +553,7 @@ separate development environment. They should be added to the readme section on 
 - [ ] Set up Microsoft Authentication.
 - [ ] Create Vercel project and configure environment variables.
 - [ ] Create Railway project, provision PostgreSQL database, and connect it to Vercel.
-- [x] Set up PostgesQL locally for development and create a `.env.local` with the connection string.
+- [x] Set up PostgreSQL locally for development and create a `.env.local` with the connection string.
   - I used a docker image for this.
     ```shell
     docker pull dhi.io/postgres:18-alpine3.22-dev
