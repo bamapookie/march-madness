@@ -225,13 +225,20 @@ model RankingEntry {
 // ─── Competitions ─────────────────────────────────────────────────────────────
 
 model Competition {
-  id           String  @id @default(cuid())
+  id           String    @id @default(cuid())
   seasonId     String
   organizerId  String
   name         String
   description  String?
-  settingsJson Json // CompetitionSettings shape defined in src/types/index.ts
-  isPublic     Boolean @default(false)
+  settingsJson Json      // CompetitionSettings shape defined in src/types/index.ts
+  isPublic     Boolean   @default(false)
+
+  /// Short hex code used in join links (/join/[joinCode]). Auto-generated at creation.
+  joinCode     String    @unique
+
+  /// Optional cutoff after which no new members may join and the competition
+  /// is hidden from the public lobby. Must be ≤ the effective lock time.
+  joinCutoffAt DateTime?
 
   season      TournamentSeason    @relation(fields: [seasonId], references: [id])
   organizer   User                @relation("CompetitionOrganizer", fields: [organizerId], references: [id])

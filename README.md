@@ -184,7 +184,7 @@ prisma.config.ts          # Prisma v7 datasource + migrations config
 | **0.2.0** | Ranking Lists — drag-to-reorder, API, lock enforcement   | ✅ Complete    |
 | **0.3.0** | Core Domain Logic — bracket resolution + scoring engine  | ✅ Complete    |
 | **0.4.0** | ESPN Import & Season Setup — API client, cron job, admin | ✅ Complete    |
-| **0.5.0** | Competitions — group play, invites, lobby, dashboard     | 🔲 Not started |
+| **0.5.0** | Competitions — group play, invites, lobby, dashboard     | ✅ Complete    |
 | **0.6.0** | Bracket Viewer & Leaderboard                             | 🔲 Not started |
 | **0.7.0** | Notifications & Polish                                   | 🔲 Not started |
 | **1.0.0** | Production Launch                                        | 🔲 Not started |

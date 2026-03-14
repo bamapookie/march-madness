@@ -2,7 +2,7 @@
 
 Application Design Document
 
-Version 1.0 • March 2026
+Version 1.1 • March 2026
 
 ## 1. Application Concept
 
@@ -16,10 +16,13 @@ simultaneously --- the higher-ranked school always advances when two schools mee
 - A school with both a Men's and Women's team occupies one slot in the ranking, and that ranking applies to both
   brackets
 - The user orders this full field from best (#1) to worst, creating their personal ranking list
+- New ranking lists are pre-populated in ascending order by each school's average NCAA seed across both tournaments.
+  Schools in both tournaments use the average of their Men's and Women's seeds; schools in only one tournament use that
+  seed directly. Ties are broken alphabetically by school name. Users reorder from this starting point.
 - That ranking list is automatically resolved into both a Men's and Women's bracket using standard NCAA bracket
   structure (four regions) including the First Four play-in games
 - In every matchup, the higher-ranked school advances --- no separate game-by-game picks are required
-- The ranking locks at tournament start and does not change.
+- The ranking locks at the competition's configured lock time and does not change.
 
 ### 1.2 Key Differentiators
 
@@ -36,13 +39,19 @@ Authentication is handled entirely via OAuth --- no passwords are stored or mana
 - Supported providers: Google, Apple, Microsoft
 - Users are identified by their OAuth provider + user ID combination.
 - Profile data (name, avatar) is pulled from the OAuth provider on first login and can be updated.
+- Auth is handled by Auth.js v5 (`next-auth@5`); sessions are accessed server-side via `auth()`.
 
 ### 2.2 Ranking Lists
 
 - Users may create multiple ranking lists per tournament season.
 - Each list ranks the full combined field of tournament schools from 1 (best) to N (worst).
+- New lists are pre-populated by average NCAA seed (ascending); users reorder from that starting point.
+- The set of schools included depends on the competition's `lock_mode`:
+  - `before_first_four` — all 68 Men's + 68 Women's teams (up to 136 schools total)
+  - `before_round_of_64` — only the 64 Round of 64 qualifiers per gender (up to 128 schools); First Four results must be
+    imported before ranking lists for such competitions can be created
 - A ranking list automatically generates both a Men's and Women's bracket.
-- Ranking lists lock at the official tournament start time and cannot be modified after that point.
+- Ranking lists lock at the competition's effective lock time and cannot be modified after that point.
 - Users may name and manage their ranking lists from a personal dashboard.
 
 ### 2.3 Bracket Viewing
@@ -65,16 +74,25 @@ Each competition is configured by its organizer. The following settings are avai
 
 ### 3.1 Access & Membership
 
-| **Setting**            | **Options**                                          | **Description**                                                 |
-| ---------------------- | ---------------------------------------------------- | --------------------------------------------------------------- |
-| **Visibility**         | Public (join via link) or <br/>Private (invite-only) | Controls who can discover and <br/>join the competition         |
-| **Max lists per user** | 1 or more <br/>(organizer sets limit)                | How many ranking lists <br/>a single user may enter             |
-| **Join deadline**      | Locks at tournament start                            | All competitions lock at tournament <br/>start; no late entries |
+| **Setting**            | **Options**                                 | **Description**                                                                                         |
+| ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **Visibility**         | Public or Private                           | Public competitions appear in the lobby; private ones are hidden and require the join code              |
+| **Max lists per user** | 1 or more (organizer sets limit)            | How many ranking lists a single user may enter                                                          |
+| **Lock mode**          | `before_first_four` or `before_round_of_64` | When the ranking list locks; determines which lock timestamp from the season is used                    |
+| **Join cutoff**        | Optional timestamp ≤ lock time              | If set, blocks new members after the cutoff; competition also disappears from public lobby after cutoff |
+| **Join code**          | 8-char hex string, auto-generated           | Unique invite code per competition; used in `/join/[code]` URLs. Organizer may rotate before cutoff.    |
+
+Every competition has a join code. Both public and private competitions can be joined via `/join/[code]` before the
+cutoff. The code never changes automatically, but the organizer may rotate it before cutoff — the old code stops working
+immediately for new joins, while existing members retain their membership.
 
 ### 3.2 Scoring Options
 
 Organizers define scoring independently for each competition. Several scoring modes are available and may be combined.
 The recommended point values decrease from Mode 1 → Bonus → Mode 2, but organizers may set any values they choose.
+
+When `lock_mode = "before_round_of_64"`, no points are awarded for First Four games in any scoring mode; the
+`first_four` keys in all point maps are ignored.
 
 #### Mode 1: Correct Game Winner Points _(primary / traditional scoring)_
 
@@ -111,15 +129,17 @@ bracket. Recommended to be worth less than Mode 1 (Correct Winner) but more than
 
 #### Mode 2: Round Advancement Points _(supplemental)_
 
-Points awarded for correctly predicting that a school reaches a given round, regardless of path. Recommended to be worth
-less than both Mode 1 and the Seeding Accuracy Bonus.
+Points awarded for each game a school **wins**, capped at the rounds where the original bracket predicted them to win.
+Recommended to be worth less than both Mode 1 and the Seeding Accuracy Bonus.
 
-- Organizer sets a point value for each round (First Four through Championship).
-- Points are cumulative: a school reaching the Elite 8 earns points for Round of 32, Sweet 16, and Elite 8.
-- No points are awarded for simply reaching the Round of 64 — all teams start there.
-- First Four points are only applicable when the competition locks before the First Four games are played.
+- Organizer sets a point value for winning a game in each round (First Four through Championship).
+- Points are cumulative: a team predicted to lose in the Elite 8 earns points for winning their Round of 64 game, Round
+  of 32 game, and Sweet 16 game (the three rounds they were originally predicted to win). The Elite 8 is their predicted
+  loss round and earns no Round Advancement points.
 - Points are awarded based on the **original** ranking predictions only; teams that inherit a slot via reseeding do not
-  earn round advancement points for that slot.
+  earn round advancement points for that inherited slot.
+- This mode is only meaningfully distinct from Correct Winner when `reseed_mode = "reseed_by_ranking"` is active. When
+  reseeding is disabled, the two modes produce equivalent results; organizers should not combine them in that case.
 
 ### 3.3 Reseeding Options
 
@@ -140,28 +160,46 @@ When two participants have identical total scores, the tiebreaker is resolved as
   difference) wins. This rewards balanced knowledge across both tournaments.
 - If the difference is also equal, participants share the rank.
 
+### 3.5 Competition Lifecycle
+
+Competitions move through four states based on the configured cutoff time and lock time:
+
+1. **Pre-cutoff** — open period. `isPublic = true` competitions appear in the public lobby and anyone can join.
+   `isPublic = false` competitions are hidden; joining requires the join code. Organizer may update `isPublic` and
+   `joinCutoffAt`, and may remove any entry.
+2. **Post-cutoff / pre-lock** — joining is closed. The competition disappears from the public lobby regardless of
+   `isPublic`. Only the organizer and members who have submitted ≥1 entry may view the lobby. Organizer may still remove
+   entries; members may still add or remove their own entries up to the lock time.
+3. **Locked** — no entries may be added or removed by anyone, including the organizer. No settings changes permitted.
+   Access is the same as post-cutoff.
+4. **Tournament in progress / complete** — same access rules as locked. Scores update as results are imported.
+
+If no `joinCutoffAt` is set, the competition transitions directly from Pre-cutoff to Locked at the lock time.
+
 ## 4. Data Model
 
 ### 4.1 Entity Overview
 
-| **Entity**          | **Key Fields**                                                           | **Notes**                                               |
-| ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------- |
-| users               | id, name, email, avatar_url, oauth_provider, oauth_id                    | One record per person regardless of OAuth provider used |
-| tournament_seasons  | id, year, mens_start_at, womens_start_at, lock_a                         | Defines the active season window; locks all brackets    |
-| schools             | id, name, conference, has_mens_team, has_womens_team                     | Populated from tournament field each year               |
-| bracket_slots       | id, season_id, gender, region, round, slot_number, school_id             | Official NCAA bracket placement; First Four included    |
-| ranking_lists       | id, user_id, season_id, name, locked, created_at                         | One per user-created ranking; max unlimited per user    |
-| ranking_entries     | id, ranking_list_id, school_id, rank_position                            | Ordered list of schools 1..N for a given ranking list   |
-| competitions        | id, name, creator_id, season_id, is_public, settings_json                | settings_json holds all scoring/reseeding config        |
-| competition_members | id, competition_id, user_id, joined_at                                   | Membership record; separate from entries                |
-| competition_entries | id, competition_id, user_id, ranking_list_id                             | Submitted ranking list for a competition                |
-| tournament_results  | id, season_id, gender, round, slot_number, winner_school_id, played_a    | Auto-imported from external source                      |
-| invitations         | id, competition_id, inviter_id, invitee_email, token, status, expires_at | Invite-only competitions                                |
-| notifications       | id, user_id, type, payload_json, read, created_at                        | In-app only; no email                                   |
+| **Entity**          | **Key Fields**                                                                                        | **Notes**                                                     |
+| ------------------- | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------- |
+| users               | id, name, email, avatar_url, oauth_provider, oauth_id                                                 | One record per person regardless of OAuth provider used       |
+| tournament_seasons  | id, year, first_four_lock_at, round_of_64_lock_at, mens_espn_tournament_id, womens_espn_tournament_id | Stores both lock timestamps; ESPN tournament IDs set by admin |
+| schools             | id, name, conference, has_mens_team, has_womens_team                                                  | Populated from tournament field each year via ESPN import     |
+| bracket_slots       | id, season_id, gender, region, round, slot_number, school_id, espn_event_id                           | Official NCAA bracket placement; First Four included          |
+| ranking_lists       | id, user_id, season_id, name, locked, created_at                                                      | One per user-created ranking; max unlimited per user          |
+| ranking_entries     | id, ranking_list_id, school_id, rank_position                                                         | Ordered list of schools 1..N for a given ranking list         |
+| competitions        | id, name, creator_id, season_id, is_public, join_code, join_cutoff_at, settings_json                  | join_code auto-generated; join_cutoff_at optional             |
+| competition_members | id, competition_id, user_id, joined_at                                                                | Membership record; separate from entries                      |
+| competition_entries | id, competition_id, user_id, ranking_list_id                                                          | Submitted ranking list for a competition                      |
+| tournament_results  | id, season_id, gender, round, slot_number, winner_school_id, played_at                                | Auto-imported from ESPN API                                   |
+| import_logs         | id, season_id, status, started_at, completed_at, error_message                                        | Tracks each ESPN import run; surfaced in admin panel          |
+| invitations         | id, competition_id, inviter_id, invitee_email, token, status, expires_at                              | Invite tokens for private competitions                        |
+| notifications       | id, user_id, type, payload_json, read, created_at                                                     | In-app only; no email                                         |
 
 ### 4.2 Competition Settings JSON Schema
 
-The settings_json column on competitions stores all configurable options:
+The `settings_json` column on `competitions` stores all scoring/reseeding configuration. Note that `join_code` and
+`join_cutoff_at` are separate columns on the `Competition` model — they are not part of `settings_json`.
 
 ```json
 {
@@ -182,12 +220,12 @@ The settings_json column on competitions stores all configurable options:
   "reseed_mode": "fixed",
   "round_points": {
     "first_four": 1,
-    "round_of_64": 0,
-    "round_of_32": 2,
-    "sweet_16": 3,
-    "elite_8": 5,
-    "final_four": 8,
-    "championship": 13
+    "round_of_64": 2,
+    "round_of_32": 4,
+    "sweet_16": 8,
+    "elite_8": 16,
+    "final_four": 32,
+    "championship": 64
   },
   "correct_winner_points": {
     "first_four": 1,
@@ -215,6 +253,7 @@ When a user creates or updates their ranking list (before lock), the system reso
   future predicted matchups. For any matchup where one or more teams have been eliminated in reality, replace the
   eliminated team with the actual advancing team and re-evaluate the matchup winner by comparing the two teams'
   positions in the user's original ranking. Matchups where both predicted teams are still alive are not changed.
+- Step 5: Store the resolved bracket. Do not recompute on every read.
 
 ### 5.2 Scoring a Bracket
 
@@ -229,111 +268,137 @@ After actual tournament results are imported, scores are computed in three indep
   earns no bonus. Uses original predictions only — not reseeded matchups. `championship_winner` and
   `championship_runner_up` are tracked separately.
 - **Round advancement scoring** _(supplemental)_: for each school that is an original slot occupant (not a reseeded
-  replacement), award `round_points[round]` for each round they actually reach beyond the Round of 64. Points are
-  cumulative (a Sweet 16 appearance earns Round of 32 + Sweet 16 points). Based on original predictions only.
+  replacement), award `round_points[round]` for each game they win in rounds where the original bracket predicted them
+  to win (i.e., rounds before their predicted exit). Points are cumulative — a team predicted to lose in the Elite 8
+  earns `round_of_64` + `round_of_32` + `sweet_16` points (the three games they were predicted to win). The Elite 8 is
+  their predicted loss round and earns no Round Advancement points. Based on original predictions only.
 - Combined score = Men's bracket score + Women's bracket score.
 - Tiebreaker value = `|Men's score − Women's score|` (smaller is better).
+- Scores are recomputed and cached after each results import; they are not recomputed on every leaderboard read.
 
 ## 6. External Data Integration
 
 ### 6.1 Tournament Field Import
 
-Prior to the tournament, an admin triggers an import to populate the schools and bracket_slots tables for the new
-season. Potential sources:
+Prior to the tournament, an admin triggers an import from the ESPN API to populate the `schools` and `bracket_slots`
+tables for the new season. The following ESPN endpoints are used:
 
-- NCAA.com official bracket data
-- ESPN API (bracket and team data endpoints)
-- Sports-reference.com structured data
+- **Team/School Reference Data:**
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=500`
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/teams?limit=500`
+- **Tournament Bracket:**
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/tournaments/{tournamentId}`
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/tournaments/{tournamentId}`
+  - The tournament ID is auto-discovered from the scoreboard endpoint and stored on the season row.
 
-This import is a one-time action per season and is reviewed by an admin before the season is marked active.
+This import is triggered manually by an admin and reviewed before the season is marked active. No API key is required;
+the ESPN API endpoints are publicly accessible.
 
 ### 6.2 Live Results Import
 
-Once the tournament begins, game results are polled and imported automatically. Options:
+Once the tournament begins, game results are polled from the ESPN API automatically via Vercel Cron Jobs.
 
-- ESPN API: Provides live scores and final results for both Men's and Women's tournaments.
-- Polling interval: every 5 minutes during tournament windows; hourly otherwise.
-- Results are written to tournament_results. Bracket scores and leaderboards are recomputed on each import.
-- Import failures are logged and retried; stale data is surfaced to admins via an in-app warning.
+- **Source:** ESPN API (sole source)
+- **Scoreboard endpoints:**
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard`
+    - Query params: `groups=50` (NCAA Tournament), `limit=100`, `dates=YYYYMMDD`
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard`
+    - Query params: `groups=49` (NCAA Tournament), `limit=100`, `dates=YYYYMMDD`
+- **Game summary (for detailed results):**
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/summary?event={gameId}`
+  - `GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/summary?event={gameId}`
+- **Polling schedule:** every 5 minutes during active tournament windows; hourly otherwise. Schedule defined in
+  `vercel.json`; the cron route calls the import function and is protected by `CRON_SECRET`.
+- Results are written to `tournament_results`. Bracket scores and leaderboards are recomputed on each successful import.
+- Import failures are logged to `import_logs` and retried; stale data is surfaced to admins via an in-app warning.
 
-## 7. Recommended Technology Stack
+## 7. Technology Stack
 
-| **Layer**      | **Technology**               | **Rationale**                                                                              |
-| -------------- | ---------------------------- | ------------------------------------------------------------------------------------------ |
-| Frontend       | Next.js (React)              | SSR + static generation, built-in API routes, excellent OAuth support via NextAuth.js      |
-| Backend API    | Next.js API Routes           | Co-located with frontend, reduces operational complexity at this scale                     |
-| Database       | PostgreSQL                   | Relational model fits bracket/competition data perfectly; strong JSON support for settings |
-| ORM            | Prisma                       | Type-safe schema management, migration tooling, works well with Next.js                    |
-| Auth           | NextAuth.js                  | Supports Google, Apple, and Microsoft OAuth out of the box; no password management         |
-| Results Import | Node.js cron job (node-cron) | Lightweight scheduled job for polling ESPN API                                             |
-| Hosting (App)  | Vercel                       | Native Next.js deployment, auto-scaling, generous free tie                                 |
-| Hosting (DB)   | Supabase or Railway          | Managed PostgreSQL with backups; Supabase adds a real-time layer if desire                 |
-| Notifications  | In-app only (DB-backed)      | Notifications table polled client-side; no email infrastructure needed                     |
+| **Layer**      | **Technology**                    | **Rationale**                                                                              |
+| -------------- | --------------------------------- | ------------------------------------------------------------------------------------------ |
+| Frontend       | Next.js (App Router)              | SSR + static generation, built-in API routes, co-located backend                           |
+| Backend API    | Next.js API Routes                | Co-located with frontend, reduces operational complexity at this scale                     |
+| Database       | PostgreSQL (Railway)              | Relational model fits bracket/competition data; strong JSON support for settings_json      |
+| ORM            | Prisma                            | Type-safe schema management, migration tooling, works well with Next.js                    |
+| Auth           | Auth.js v5 (`next-auth@5`)        | Supports Google, Apple, and Microsoft OAuth; no password management; `AUTH_SECRET` env var |
+| Results Import | Vercel Cron Jobs polling ESPN API | Native Vercel scheduling; no separate infrastructure needed                                |
+| Hosting (App)  | Vercel                            | Native Next.js deployment, auto-scaling                                                    |
+| Hosting (DB)   | Railway                           | Plain PostgreSQL; no inactivity pauses; standard `DATABASE_URL` works with Prisma          |
+| Notifications  | In-app only (DB-backed)           | Notifications table polled client-side; no email infrastructure needed                     |
 
 ### 7.1 OAuth Configuration
 
 Each OAuth provider requires app registration:
 
-- Google: Google Cloud Console → OAuth 2.0 credential
+- Google: Google Cloud Console → OAuth 2.0 credential (`GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`)
 - Apple: Apple Developer Portal → Sign In with Apple service ID
 - Microsoft: Azure Portal → App registration with Microsoft identity platform
 
-All three providers are configured as NextAuth.js providers with client ID and secret stored in environment variables.
+All three providers are configured as Auth.js v5 providers with client ID and secret stored in environment variables.
+Admin access is controlled via the `ADMIN_EMAILS` environment variable (comma-separated list of email addresses); no
+admin role is stored in the database.
 
 ## 8. Infrastructure & Hosting
 
 ### 8.1 Small Scale (Personal / Friends Group, \<500 users)
 
-| **Resource**     | **Service**                                       | **Estimated Monthly Cost** |
-| ---------------- | ------------------------------------------------- | -------------------------- |
-| Frontend + API   | Vercel                                            | Hobby Free                 |
-| PostgreSQL       | Supabase Free                                     | Tier Free                  |
-| Results Cron Job | Vercel Cron <br/>(or Supabase Free Edge Function) |                            |
-| OAuth            | Google / Apple / Microsoft                        | Free(free for basic use)   |
-| **Total**        |                                                   | **~\$0/month**             |
+| **Resource**     | **Service**                | **Estimated Monthly Cost** |
+| ---------------- | -------------------------- | -------------------------- |
+| Frontend + API   | Vercel Hobby               | Free                       |
+| PostgreSQL       | Railway Starter            | ~\$5                       |
+| Results Cron Job | Vercel Cron                | Included                   |
+| OAuth            | Google / Apple / Microsoft | Free (basic use)           |
+| **Total**        |                            | **~\$5/month**             |
 
 ### 8.2 Medium Scale (Hundreds to Low Thousands of Users)
 
-| **Resource**                  | **Service**             | **Estimated Monthly Cost** |
-| ----------------------------- | ----------------------- | -------------------------- |
-| Frontend + API                | Vercel Pro              | \$20                       |
-| PostgreSQL                    | Railway or Supabase Pro | \$10--\$25                 |
-| Cron / Background Jobs Worker | Vercel Cron or Railway  | Included or \$5            |
-| **Total**                     |                         | **~\$30-\$50/month**       |
+| **Resource**                  | **Service** | **Estimated Monthly Cost** |
+| ----------------------------- | ----------- | -------------------------- |
+| Frontend + API                | Vercel Pro  | \$20                       |
+| PostgreSQL                    | Railway     | \$10--\$25                 |
+| Cron / Background Jobs Worker | Vercel Cron | Included                   |
+| **Total**                     |             | **~\$30-\$45/month**       |
 
 ### 8.3 Data Persistence Strategy
 
-- All application state (users, rankings, brackets, competitions, results) lives in PostgreSQL
-- Bracket resolution is computed and stored --- not recalculated on every read --- for performance.
+- All application state (users, rankings, brackets, competitions, results) lives in PostgreSQL on Railway.
+- Bracket resolution is computed and stored — not recalculated on every read — for performance.
 - Scores are recomputed and cached in a scores summary table after each results import.
-- Database backups: daily automated backups via Supabase/Railway; 7-day retention minimum.
-- The ranking list and all entries are immutable after the lock time.No edits are permitted post-lock.
+- Database backups: daily automated backups via Railway; 7-day retention minimum.
+- The ranking list and all entries are immutable after the lock time. No edits are permitted post-lock.
 
 ## 9. Application Screen Inventory
 
-| **Screen**                      | **Description**                                                                                                   |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Landing / Login                 | OAuth login with Google, Apple, Microsoft. <br/>Brief app description. Tournament status banner.                  |
-| Dashboard                       | User's ranking lists, active competitions, <br/>notifications feed, tournament season status.                     |
-| Create / Edit <br/>Ranking List | Drag-and-drop interface to order all tournament <br/>schools. Save, name, and preview both brackets.              |
-| Bracket Viewer                  | Side-by-side Men's and Women's bracket visualization <br/>derived from a ranking list. Highlights actual results. |
-| Competition Lobby               | Competition details, leaderboard, participant list, <br/>entry management, share/invite link.                     |
-| Create Competition              | Form to configure all competition settings <br/>(scoring, reseeding, visibility, max entries).                    |
-| Leaderboard                     | Ranked list of participants in a competition <br/>with scores, tiebreaker values, and bracket links.              |
-| Admin Panel                     | Manage tournament season, trigger field import, <br/>monitor results import status, manage users.                 |
-| Notifications                   | In-app notification center: competition invites, <br/>score updates, join alerts.                                 |
-| Profile                         | User profile, linked OAuth accounts, <br/>list of all ranking lists and competitions.                             |
+| **Screen**                     | **Description**                                                                                                   |
+| ------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Landing / Login                | OAuth login with Google, Apple, Microsoft. Brief app description. Tournament status banner.                       |
+| Dashboard                      | User's ranking lists, active competitions, notifications feed, tournament season status.                          |
+| Create / Edit Ranking List     | Drag-and-drop interface to order all tournament schools. Save, name, and preview both brackets.                   |
+| Bracket Viewer                 | Side-by-side Men's and Women's bracket visualization derived from a ranking list. Highlights actual results.      |
+| Competition Lobby              | Competition details, leaderboard, participant list, entry management, join code display, lock countdown.          |
+| Create Competition             | Form to configure all competition settings (scoring, reseeding, visibility, lock mode, max entries).              |
+| Public Competition List        | Browseable list of public competitions open for joining (hidden after join cutoff).                               |
+| Join via Code (`/join/[code]`) | Landing page for invite links. Accepts join code from URL; handles join flow or prompts login.                    |
+| Leaderboard                    | Ranked list of participants in a competition with scores, tiebreaker values, and bracket links.                   |
+| Admin Panel                    | Manage tournament season, trigger ESPN import, monitor import status (logs, stale-data warnings), ESPN ID editor. |
+| Notifications                  | In-app notification center: competition invites, score updates, join alerts.                                      |
+| Profile                        | User profile, linked OAuth accounts, list of all ranking lists and competitions.                                  |
 
-## 10. Open Items Before Development
+## 10. Design Decisions
 
-The following items should be confirmed before implementation begins:
+All open design questions from the initial document have been resolved. Decisions are recorded in `CLAUDE.md` under the
+**Resolved Questions** section. Key resolved items include:
 
-- Which external API will be the primary source for tournament field data and live results (ESPN API requires a key;
-  NCAA.com has unofficial endpoints)?
-- Should the application support multiple tournament seasons, or is it a fresh deployment each year?
-- Is there a designated admin user, and how is admin access granted (hard-coded email, role in DB)?
-- Should competitions support a Finals prediction bonus (e.g., predict the combined championship game score for a
-  special tiebreaker)?
-- What is the expected launch timeline relative to Selection Sunday and tournament start?
+- **ESPN API** — sole source for both tournament field and live results; no API key required
+- **Multi-season** — fresh deployment each year; data model supports multi-season for future use
+- **Admin access** — `ADMIN_EMAILS` environment variable; no DB role required
+- **Tiebreaker** — absolute difference between Men's and Women's bracket scores (smaller is better)
+- **Auth library** — Auth.js v5 (`next-auth@5`); `AUTH_SECRET` env var
+- **Cron mechanism** — Vercel Cron Jobs; `src/lib/import.ts` is a plain function with no scheduler
+- **Database host** — Railway (PostgreSQL); no Supabase
+- **Lock mode** — organizer-configurable: `before_first_four` or `before_round_of_64`
+- **Ranking list pre-population** — ascending by average NCAA seed; ties broken alphabetically
+- **Reseeding** — partial adjustment only (matchups with two live teams are never changed)
+- **Seeding bonus for championship** — `championship_winner` and `championship_runner_up` are separate bonus keys
 
 _End of Design Document_
