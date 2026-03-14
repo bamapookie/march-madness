@@ -180,9 +180,11 @@ Server component.
   | 1   | Avatar + Name | Entry name (link → entry detail) | 120   | 115     | 235   | 5          |
 
 - Tiebreaker column: show the value with a tooltip "Lower = better balanced across Men's & Women's".
-- When `isLocked = false`: show a banner "Tournament not yet locked — scores will appear once entries are locked."
+- Guard: if no `TournamentResult` rows exist for the season, redirect to the competition lobby — the lobby will show the
+  "first game" message in place of the leaderboard link.
 - "Back to Competition" link at top.
-- Accessible from the competition lobby via a "Leaderboard →" button.
+- Accessible from the competition lobby via a "Leaderboard →" button that is only rendered once a result exists; until
+  then a static message reads _"The leaderboard will be available once the first game begins."_
 
 ---
 
@@ -222,8 +224,9 @@ No new top-level nav link needed — bracket and leaderboard are always reached 
 
 ### Competition lobby (`src/app/competition/[id]/page.tsx`)
 
-- Add a **"Leaderboard →"** button/link visible once the competition is locked (or at all times with a grayed state
-  before lock showing "Available after lock").
+- If at least one `TournamentResult` exists for the season: show a **"Leaderboard →"** button/link.
+- Otherwise: show the static message _"The leaderboard will be available once the first game begins."_ in the same
+  location. The message is the same whether the competition is pre-lock or locked — users don't need the distinction.
 - Update the entries table (in `lobby-client.tsx`) so each entry row is a clickable link to
   `/competition/[id]/entries/[entryId]` when the competition is locked and a score exists.
 
@@ -239,8 +242,17 @@ No new top-level nav link needed — bracket and leaderboard are always reached 
    with many entries and `reseed_by_ranking`, this is fine since scoring runs only on import (not on every read). No
    schema change needed — the current approach is sufficient.
 
-2. **Leaderboard visibility before lock**: The plan shows the leaderboard link at all times (with an empty/placeholder
-   state before lock). An alternative is to hide the link entirely until the competition is locked. Preference?
+2. **Leaderboard visibility before the first game** ✅ _resolved_: The leaderboard link and page are hidden until at
+   least one `TournamentResult` row exists for the season (i.e. the first game of the tournament is in progress or
+   complete). The threshold is the first game for the season overall — not per-competition — because the tournament
+   schedule is the same for everyone. Wherever a "Leaderboard →" button or link would appear (competition lobby, entry
+   detail page), show a static message in its place instead:
+   - If the competition has **not yet locked**: _"The leaderboard will be available once the first game begins."_
+   - If the competition **is locked but no results exist yet**: _"The leaderboard will be available once the first game
+     begins."_
+   - The message is the same in both cases — users don't need to know the internal reason, only when to come back. The
+     leaderboard page itself (`/competition/[id]/leaderboard`) should also guard against direct URL access and redirect
+     to the competition lobby with the same message if no results exist yet.
 
 3. **Bracket viewer visual fidelity**: The plan calls for a "region cards with round columns" layout without SVG
    connecting lines. This is the simplest implementation that clearly shows all matchups. Full NCAA bracket art with
