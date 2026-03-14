@@ -1,0 +1,9 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/import-results",
+      "schedule": "*/5 * * * *"
+    }
+  ]
+}
+

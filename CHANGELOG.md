@@ -11,6 +11,53 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.4.0] — 2026-03-13
+
+### ESPN Import & Season Setup
+
+- `src/lib/import.ts` — ESPN API import library (no scheduler; called by cron route and dev script):
+  - `fetchEspnJson<T>` — thin fetch wrapper; mocked in tests via `vi.spyOn`
+  - `discoverTournamentId(gender)` — auto-discovers ESPN tournament ID by scanning the NCAA Tournament
+    scoreboard for March dates; stores result on the `TournamentSeason` row
+  - `importSchools(seasonId, gender, espnTournamentId)` — upserts `School` rows from the tournament
+    bracket and enriches with `shortDisplayName`/`abbreviation` from the teams endpoint
+  - `importBracketSlots(seasonId, gender, espnTournamentId)` — builds the full 4-region × 16-seed
+    slot tree programmatically using fixed NCAA bracket rules; two-pass upsert sets `nextSlotId`;
+    stores `espnEventId` on game slots for result matching
+  - `importResults(seasonId, gender)` — fetches completed games from ESPN scoreboard, matches to
+    bracket slots via `espnEventId`, upserts `TournamentResult` rows idempotently
+  - `runFullImport(seasonId)` — orchestrates both genders; writes `ImportLog` on success or failure;
+    calls `recomputeAllScores` stub (wired fully in 0.6.0)
+- `src/lib/admin.ts` — `isAdmin(email)` helper; reads admin emails from `ADMIN_EMAILS` env var
+  (comma-separated); no hard-coded addresses in source
+- `src/lib/scoring.ts` — added `recomputeAllScores(_seasonId)` no-op stub for 0.6.0 wiring
+- `src/types/espn.ts` — strict TypeScript interfaces for all ESPN API responses (no `any`):
+  `EspnTeamsResponse`, `EspnScoreboardResponse`, `EspnTournamentResponse` and all sub-types
+- `src/app/api/admin/import/route.ts` — `POST` route; admin-only; triggers `runFullImport`
+- `src/app/api/admin/season/route.ts` — `PATCH` route; admin-only; updates `mensEspnTournamentId`
+  and `womensEspnTournamentId` on the active season
+- `src/app/api/cron/import-results/route.ts` — `GET` route; validated by `CRON_SECRET`; short-circuits
+  outside the tournament window; calls `runFullImport`
+- `vercel.json` — cron schedule `*/5 * * * *` pointing at `/api/cron/import-results`
+- `src/scripts/import-results.ts` — dev script (`npm run import:results`); creates own Prisma client,
+  finds active season, calls `runFullImport`, logs results
+- `src/app/admin/page.tsx` — server component; redirects non-admins; loads season stats and last
+  import log; passes serialized data to `AdminImportPanel`
+- `src/components/admin/admin-import-panel.tsx` — client component with:
+  - Season stats (school/slot/result counts, lock timestamps)
+  - ESPN tournament ID editor with save via `PATCH /api/admin/season`
+  - Last import status (timestamp, counts, error message)
+  - `⚠ Stale data` badge when last success import is > 30 min old during active tournament
+  - "Run Import Now" button via `POST /api/admin/import`
+- Schema additions (migration `20260313151919_add_espn_import_support`):
+  - `TournamentSeason.mensEspnTournamentId String?`
+  - `TournamentSeason.womensEspnTournamentId String?`
+  - `BracketSlot.espnEventId String? @unique`
+  - `ImportStatus` enum (`SUCCESS` | `FAILURE`)
+  - `ImportLog` model
+- `.env.example` — added `ADMIN_EMAILS` variable documentation
+- All TypeScript strict; zero type errors; all 50 pre-existing tests pass
+
 ## [0.3.0] — 2026-03-13
 
 ### Core Domain Logic

@@ -109,6 +109,7 @@ Copy `.env.example` to `.env` and populate each value:
 | `MICROSOFT_CLIENT_SECRET` | Microsoft Azure client secret                                                         |
 | `MICROSOFT_TENANT_ID`     | `"common"` for any Microsoft account, or a specific tenant ID                         |
 | `CRON_SECRET`             | Secret to authenticate `/api/cron/*` routes — generate with `openssl rand -base64 32` |
+| `ADMIN_EMAILS`            | Comma-separated list of admin email addresses (e.g. `"you@example.com"`)              |
 
 > **Never commit `.env` to version control.** It is listed in `.gitignore`.
 
@@ -182,7 +183,7 @@ prisma.config.ts          # Prisma v7 datasource + migrations config
 | **0.1.0** | Foundation — schema, auth, middleware, layout            | ✅ Complete    |
 | **0.2.0** | Ranking Lists — drag-to-reorder, API, lock enforcement   | ✅ Complete    |
 | **0.3.0** | Core Domain Logic — bracket resolution + scoring engine  | ✅ Complete    |
-| **0.4.0** | ESPN Import & Season Setup — API client, cron job, admin | 🔲 Not started |
+| **0.4.0** | ESPN Import & Season Setup — API client, cron job, admin | ✅ Complete    |
 | **0.5.0** | Competitions — group play, invites, lobby, dashboard     | 🔲 Not started |
 | **0.6.0** | Bracket Viewer & Leaderboard                             | 🔲 Not started |
 | **0.7.0** | Notifications & Polish                                   | 🔲 Not started |

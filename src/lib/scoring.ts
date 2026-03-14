@@ -181,3 +181,17 @@ export function scoreEntry(input: ScoringInput): ScoreResult {
 
 // Re-export helpers used in tests (via named exports for testability)
 export { computeActualExit, isExcludedByLockMode, roundAdvancementKey, correctWinnerKey };
+
+// ─── recomputeAllScores (stub for milestone 0.6.0) ───────────────────────────
+
+/**
+ * Recompute and cache bracket scores for all competition entries in the given season.
+ * Called after every successful results import.
+ *
+ * TODO(0.6.0): implement full score recomputation and leaderboard cache update.
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export async function recomputeAllScores(_seasonId: string): Promise<void> {
+  // no-op until milestone 0.6.0
+}
+

@@ -1,0 +1,17 @@
+### ESPN Teams — Men's
+# Returns all Men's college basketball teams (name, abbreviation, ESPN ID).
+# Used by importSchools() to enrich shortDisplayName and abbreviation.
+# Look for the team you want in teams[].team.{id, displayName, shortDisplayName, abbreviation}.
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/teams?limit=500
+Accept: application/json
+
+###
+
+### ESPN Teams — Women's
+# Returns all Women's college basketball teams.
+# Same structure as Men's.
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/teams?limit=500
+Accept: application/json
+
