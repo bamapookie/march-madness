@@ -143,17 +143,41 @@ type CompetitionUpdateInput = {
 **Default settings:**
 
 ```typescript
-{
+var competition_settings = {
   max_lists_per_user: 1,
   lock_mode: "before_first_four",
   scoring_mode: ["correct_winner"],
   seeding_bonus_enabled: false,
   reseed_mode: "fixed",
-  round_points:          { first_four: 1, round_of_64: 1, round_of_32: 2, sweet_16: 4,  elite_8: 8,  final_four: 16, championship: 32 },
-  correct_winner_points: { first_four: 2, round_of_64: 2, round_of_32: 4, sweet_16: 8,  elite_8: 16, final_four: 32, championship: 64 },
-  seeding_bonus_points:  { first_four: 1, round_of_64: 1, round_of_32: 2, sweet_16: 4,  elite_8: 8,  final_four: 16,
-                           championship_runner_up: 24, championship_winner: 32 },
-}
+  round_points: {
+    first_four: 1,
+    round_of_64: 1,
+    round_of_32: 2,
+    sweet_16: 4,
+    elite_8: 8,
+    final_four: 16,
+    championship: 32,
+  },
+  correct_winner_points: {
+    first_four: 2,
+    round_of_64: 2,
+    round_of_32: 4,
+    sweet_16: 8,
+    elite_8: 16,
+    final_four: 32,
+    championship: 64,
+  },
+  seeding_bonus_points: {
+    first_four: 1,
+    round_of_64: 1,
+    round_of_32: 2,
+    sweet_16: 4,
+    elite_8: 8,
+    final_four: 16,
+    championship_runner_up: 24,
+    championship_winner: 32,
+  },
+};
 ```
 
 ---
@@ -382,7 +406,7 @@ Two-section layout: **My Competitions** + **My Ranking Lists** (reuse `RankingLi
 1. **Lock enforcement for join:** Joining is blocked at `joinCutoffAt` (independent of lock time). If no cutoff is set,
    joining is blocked only at lock time.
 
-2. **Public lobby visibility:** Public competitions appear in the public lobby until cutoff. After cutoff they are
+2. **Public lobby visibility:** Public competitions appear in the public lobby until cutoff. After cutoff, they are
    hidden from the public list and access is restricted to organizer + entry-holders.
 
 3. **Organizer entry removal:** Organizers can remove any entry before lock. After lock, nobody (including the
