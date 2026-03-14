@@ -51,15 +51,22 @@ Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round o
 - Admin page — import status, stale data warnings, ESPN ID editor, manual trigger (`src/app/admin`)
 - `src/lib/admin.ts` — `isAdmin()` helper driven by `ADMIN_EMAILS` env var
 - `src/types/espn.ts` — strict ESPN API response types (no `any`)
-- Schema additions: `mensEspnTournamentId`/`womensEspnTournamentId` on `TournamentSeason`; `espnEventId` on `BracketSlot`; new `ImportLog` model with `ImportStatus` enum
+- Schema additions: `mensEspnTournamentId`/`womensEspnTournamentId` on `TournamentSeason`; `espnEventId` on
+  `BracketSlot`; new `ImportLog` model with `ImportStatus` enum
 
 ### 0.5.0 — Competitions _(group play)_
 
-- API routes — create competition, join, submit ranking list entry
-- Invite token generation and redemption
+- API routes — create competition, join, submit ranking list entry, organizer update
+- Join code — auto-generated per competition; used in invite URLs (`/join/[code]`)
+- Optional join cutoff time — blocks new members after cutoff; must be ≤ lock time
+- Competitions become effectively private at cutoff regardless of `isPublic` setting
+- Public lobby — public competitions browseable by anyone before cutoff (`/competition`)
+- Organizer controls — change `isPublic` and `joinCutoffAt` before cutoff; remove entries before lock
+- Post-cutoff access — only organizer + members with ≥1 submitted entry can view the lobby
 - Competition creation form with full settings (scoring mode, lock mode, points, reseed mode)
-- Competition lobby — members, submitted entries, lock countdown (`src/app/competition`)
+- Competition lobby — members, submitted entries, lock countdown, join code display (`src/app/competition`)
 - Dashboard — user's competitions and ranking lists (`src/app/dashboard`)
+- Schema additions: `joinCode String @unique` and `joinCutoffAt DateTime?` on `Competition`
 
 ### 0.6.0 — Bracket Viewer & Leaderboard _(scoring display)_
 
@@ -228,9 +235,32 @@ bracket predicted — including a separate bonus for correctly predicting the ch
 **Tiebreaker:** When scores are tied, the user whose Men's and Women's bracket scores have the smaller absolute
 difference wins. Rewards balanced knowledge across both tournaments.
 
+**Competition lifecycle:** Competitions move through four states:
+
+1. **Pre-cutoff** — open period. `isPublic = true` competitions appear in the public lobby and anyone can join.
+   `isPublic = false` competitions are hidden; joining requires the join code. Organizer may update `isPublic` and
+   `joinCutoffAt`, and may remove any entry.
+2. **Post-cutoff / pre-lock** — joining is closed. The competition disappears from the public lobby regardless of
+   `isPublic`. Only the organizer and members who have submitted ≥1 entry may view the lobby. Organizer may still remove
+   entries. Members may still add or remove their own entries up to the lock time.
+3. **Locked** — no entries may be added or removed by anyone, including the organizer. No settings changes permitted.
+   Access is the same as post-cutoff.
+4. **Tournament in progress / complete** — same access rules as locked.
+
+**Join code:** Every competition has a unique `joinCode` (8-char hex string, auto-generated at creation). The invite URL
+is `/join/[joinCode]`. Both public and private competitions can be joined this way (before cutoff). The code never
+changes.
+
+**Join cutoff (`joinCutoffAt`):** Optional timestamp set by the organizer. If set, it must be ≤ the competition's
+effective lock time. After cutoff: no new joins, competition hidden from public lobby, access restricted to organizer +
+entry-holders. Organizer may no longer change settings after cutoff.
+
 ---
 
 ## Competition Settings (settings_json shape)
+
+> In addition to `settingsJson`, the `Competition` model also stores `joinCode String @unique` (auto-generated, never
+> changes) and `joinCutoffAt DateTime?` (optional; must be ≤ lock time).
 
 ```typescript
 type CompetitionSettings = {
@@ -446,8 +476,8 @@ milestone is delivered.
   - Fresh deployment each year. Data model supports multi-season, but initial launch will focus on a single season to
     reduce complexity.
 - [x] How is admin access granted — hard-coded email or DB role?
-  - For the initial release, admin access is driven by the `ADMIN_EMAILS` environment variable (comma-separated list
-    of email addresses). `src/lib/admin.ts` exports `isAdmin(email)` which reads this variable at runtime. This avoids
+  - For the initial release, admin access is driven by the `ADMIN_EMAILS` environment variable (comma-separated list of
+    email addresses). `src/lib/admin.ts` exports `isAdmin(email)` which reads this variable at runtime. This avoids
     hard-coded values in source code and allows easy configuration in Vercel without a code deploy. In the future, we
     could add an `is_admin` flag to the `users` table and build an admin management UI.
 - [x] Finals score prediction bonus tiebreaker?
