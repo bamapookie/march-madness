@@ -95,8 +95,19 @@ Sum across all unplayed game slots for both genders. Exclude `first_four` if `lo
 
 **For `reseed_mode = "reseed_by_ranking"`:**
 
-Set `maxPotentialRemaining = -1` (sentinel meaning "not computable"). Display as "N/A" in the UI. This is an open
-question — see Decision Point 5.
+Apply the three-case classification defined in Decision Point 5. For each unplayed game slot in the current reseeded
+bracket:
+
+- **Case A (both teams reseeded)**: add `correct_winner_points[round]` only.
+- **Case B (both teams original)**: same calculation as the fixed bracket above — CW + RA + seeding bonus at predicted
+  exit.
+- **Case C (one original, one reseeded)**: add CW (if original team is predicted winner), RA (if round < original team's
+  predicted exit round), and seeding bonus (if this is the original team's predicted exit slot and they have not yet
+  advanced past it). Future slots on the original team's path through the bracket are processed in the same iteration
+  and accumulate their contributions as Case A, B, or C in turn.
+
+Seeding bonus guard for Case B and C: if an original team has already advanced past their originally-predicted exit
+round in real tournament results, their seeding bonus is forfeit — do not count it for any remaining slots.
 
 ---
 
@@ -105,7 +116,6 @@ question — see Decision Point 5.
 Add the following types:
 
 ```ts
-// Leaderboard row returned by GET /api/competitions/[id]/leaderboard
 // The shape stored in EntryScore.breakdownJson.
 // Captures earned points by scoring method and gender so the UI can show a full
 // breakdown of where every point came from.
@@ -137,7 +147,7 @@ export type LeaderboardEntry = {
   womensScore: number;
   totalScore: number;
   tiebreaker: number; // abs(mens - womens); lower is better
-  maxPotentialRemaining: number | null; // null = not yet computed; -1 = N/A (reseed mode)
+  maxPotentialRemaining: number | null; // null = not yet computed (no scoring run has occurred yet)
   computedAt: string | null; // ISO timestamp; null = not yet computed
 };
 
@@ -157,7 +167,7 @@ export type EntryScoreDetail = {
   womensScore: number;
   totalScore: number;
   tiebreaker: number;
-  maxPotentialRemaining: number | null; // null = not yet computed; -1 = N/A (reseed mode)
+  maxPotentialRemaining: number | null; // null = not yet computed (no scoring run has occurred yet)
   breakdown: ScoreBreakdownJson | null; // null until first computation
   computedAt: string | null;
 };
@@ -266,7 +276,7 @@ Server component.
   | --- | ------------- | -------------------------------- | ----- | ------- | ----- | ------------- | ---------- |
   | 1   | Avatar + Name | Entry name (link → entry detail) | 120   | 115     | 235   | 40            | 5          |
 
-- **Max Remaining** column: show the `maxPotentialRemaining` value. If `-1`, show "N/A". If `null`, omit or show "—".
+- **Max Remaining** column: show the `maxPotentialRemaining` value. If `null`, show "—" (scoring has not yet run).
 - Tiebreaker column: show the value with a tooltip "Lower = better balanced across Men's & Women's".
 - Guard: if no `TournamentResult` rows exist for the season, redirect to the competition lobby — the lobby will show the
   "first game" message in place of the leaderboard link.
@@ -282,8 +292,8 @@ Server component.
 
 - Auth + access check (entry owner, organizer, or member w/ entry).
 - Render two panels side by side (or stacked on mobile):
-  - **Score panel**: total score, Men's score, Women's score, tiebreaker value, max potential remaining, `computedAt`
-    timestamp. If score is null, show "Scores not yet computed."
+  - **Score panel**: total score, Men's score, Women's score, tiebreaker value, max potential remaining (shown as "—" if
+    not yet computed), `computedAt` timestamp. If score is null, show "Scores not yet computed."
     - Include a **score breakdown table** driven by `breakdownJson`:
 
       | Scoring Method    | Men's | Women's | Total |
@@ -363,17 +373,44 @@ No new top-level nav link needed — bracket and leaderboard are always reached 
    (roundAdvancement, correctWinner, seedingBonus). Populated during `recomputeAllScores`; avoids re-running
    `scoreEntry` on every page view. A migration is required (see Schema Changes above).
 
-5. **Max potential remaining under `reseed_by_ranking`** ⚠️ _open question_: For fixed brackets, max potential is
-   computed straightforwardly (see Step 1a). For reseeded brackets the situation is more complex:
-   - After reseeding, the bracket's future predicted matchups have already changed based on real results. We could
-     compute max potential from the _current_ reseeded state by assuming every current predicted winner wins all
-     remaining games. However, this is an approximation — as more real results come in, the reseeded bracket will
-     continue to change, so the "max potential" itself is a moving target.
-   - It is also unclear whether max potential in a reseeded bracket should account for correct-winner points (since
-     those are earned on slot-by-slot predictions that change with each reseed), round-advancement points (which are
-     always tied to original predictions), or both.
-   - **For this milestone**: store `-1` (sentinel "N/A") for reseeded competitions. Display "N/A" in all max remaining
-     cells. Revisit in a follow-up session before the tournament starts.
+5. **Max potential remaining under `reseed_by_ranking`** ✅ _resolved_: Classify each unplayed game slot in the reseeded
+   bracket into one of three cases based on how many of the two competing teams are **original predicted teams** (teams
+   that appear in that slot in the original bracket and are still alive in the real tournament vs. having been replaced
+   by a reseeded substitute).
+
+   **Case A — Both teams are reseeded** (both original predicted teams for this slot were eliminated):
+   - Only **CW points** apply: `correct_winner_points[round]` if the predicted winner of the slot wins.
+   - RA and seeding bonus are both tied to the original bracket's predictions. Since neither original team is present in
+     this slot, neither can be earned here.
+
+   **Case B — Both teams are original predicted teams** (both still in their originally-predicted positions):
+   - Same calculation as the fixed bracket (see Step 1a). All three categories apply: CW for the predicted winner, RA
+     for the predicted winner (if round < their predicted exit round), and seeding bonus for the predicted loser (if
+     this is their predicted exit game). Both contributions (winner and loser) are counted simultaneously since it is
+     the same game outcome.
+
+   **Case C — Mixed: one original predicted team, one reseeded team**:
+   - A single-slot calculation is insufficient. The correct approach is to trace the original team's remaining path
+     forward from this slot through all future unplayed game slots they are predicted to appear in, up to and including
+     the game where they were originally predicted to lose (or through the championship game if they were predicted to
+     win it all). For each slot in this path:
+     - **CW**: add `correct_winner_points[round]` if the original team is the predicted winner of that slot in the
+       reseeded bracket (i.e. their rank position is lower than their opponent's).
+     - **RA**: add `round_points[round]` if `"round_advancement"` is in `scoring_mode` AND the round is strictly before
+       the original team's predicted exit round (rounds they were originally predicted to win).
+     - **Seeding bonus**: add `seeding_bonus_points[predictedExitRound]` if `seeding_bonus_enabled` AND this is the
+       original team's predicted exit game AND the team has not yet advanced past that round in the real tournament (if
+       they have already advanced past their predicted exit, the seeding bonus is forfeit and should not be counted for
+       any remaining slots).
+   - **Implementation note**: when iterating over all unplayed slots to compute total max potential, Case C does not
+     require a separate lookahead pass. Future slots on the original team's path will naturally be visited during the
+     same iteration; each will be classified again as Case A, B, or C, and their contributions will accumulate
+     correctly. The "trace forward" framing simply means: do not stop attributing potential points to an original team
+     when you first encounter a mixed slot — continue processing all their future unplayed slots as well.
+
+   **Sentinel removal**: `maxPotentialRemaining = -1` is no longer needed. Reseeded brackets are now computable using
+   the three-case algorithm above. The schema field remains `Int?` (nullable); `null` means not yet computed (no scoring
+   run has occurred), and a non-null value always represents the computed max potential.
 
 ---
 
