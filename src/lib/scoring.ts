@@ -3,13 +3,17 @@ import type {
   CompetitionSettings,
   GenderScoringInput,
   PredictedExitRound,
+  ResolvedBracketData,
   ResolvedGame,
   Round,
   RoundPointMap,
   ScoreBreakdown,
+  ScoreBreakdownJson,
   ScoreResult,
   ScoringInput,
   SeedingBonusPointMap,
+  BracketSlotInput,
+  RankMap,
 } from "@/types";
 
 // ─── Internal helpers ──────────────────────────────────────────────────────────
@@ -182,16 +186,357 @@ export function scoreEntry(input: ScoringInput): ScoreResult {
 // Re-export helpers used in tests (via named exports for testability)
 export { computeActualExit, isExcludedByLockMode, roundAdvancementKey, correctWinnerKey };
 
-// ─── recomputeAllScores (stub for milestone 0.6.0) ───────────────────────────
+// ─── Round ordering ────────────────────────────────────────────────────────────
+
+const ROUND_ORDER: Round[] = [
+  "FIRST_FOUR",
+  "ROUND_OF_64",
+  "ROUND_OF_32",
+  "SWEET_16",
+  "ELITE_8",
+  "FINAL_FOUR",
+  "CHAMPIONSHIP",
+];
+
+function roundIndex(r: Round | PredictedExitRound): number {
+  const normalised =
+    r === "CHAMPIONSHIP_RUNNER_UP" || r === "CHAMPIONSHIP_WINNER" ? "CHAMPIONSHIP" : r;
+  return ROUND_ORDER.indexOf(normalised as Round);
+}
+
+/** True when `a` is a round that comes strictly before `b` in tournament progression. */
+function roundBefore(a: Round, b: Round | PredictedExitRound): boolean {
+  return roundIndex(a) < roundIndex(b);
+}
+
+// ─── computeMaxPotential (per-gender) ─────────────────────────────────────────
+
+/**
+ * Computes the maximum additional points a user could still earn for one
+ * gender's bracket.
+ *
+ * For fixed brackets: straightforward "if predicted winner is still alive, count
+ * potential points for the unplayed slot".
+ *
+ * For reseeded brackets: three-case classification (see CLAUDE.md / plan doc).
+ */
+function computeMaxPotentialGender(
+  originalBracket: ResolvedBracketData,
+  currentBracket: ResolvedBracketData,
+  actualResults: ActualResultItem[],
+  settings: CompetitionSettings
+): number {
+  const playedSlotIds = new Set(actualResults.map((r) => r.bracketSlotId));
+  const eliminatedSchools = new Set(actualResults.map((r) => r.losingSchoolId));
+
+  // Build a map from slotId → original game for quick lookup in reseeded mode
+  const originalGameBySlotId = new Map<string, ResolvedGame>();
+  for (const g of originalBracket.games) {
+    originalGameBySlotId.set(g.slotId, g);
+  }
+
+  let maxPotential = 0;
+
+  for (const currentGame of currentBracket.games) {
+    if (playedSlotIds.has(currentGame.slotId)) continue; // already played
+    if (isExcludedByLockMode(currentGame.round, settings.lock_mode)) continue;
+
+    const originalGame = originalGameBySlotId.get(currentGame.slotId);
+
+    // Determine case: how many of the current contestants were in the original bracket for this slot?
+    const isFixed = settings.reseed_mode === "fixed";
+    const originalTeams = originalGame
+      ? new Set([originalGame.topContestantId, originalGame.bottomContestantId])
+      : new Set<string>();
+    const currentTeams = [currentGame.topContestantId, currentGame.bottomContestantId];
+    const originalInSlot = currentTeams.filter((t) => originalTeams.has(t));
+
+    // Case A (reseeded): both contestants were replaced — only CW applies
+    if (!isFixed && originalGame && originalInSlot.length === 0) {
+      if (settings.scoring_mode.includes("correct_winner")) {
+        maxPotential += settings.correct_winner_points[roundAdvancementKey(currentGame.round)];
+      }
+      continue;
+    }
+
+    // Case B: both original (or fixed bracket), Case C: mixed (one original, one reseeded)
+    // For the predicted winner of the current (possibly reseeded) bracket:
+    const currentWinner = currentGame.predictedWinnerId;
+    const currentLoser = currentGame.predictedLoserId;
+
+    // CW points — predicted winner
+    if (settings.scoring_mode.includes("correct_winner") && !eliminatedSchools.has(currentWinner)) {
+      maxPotential += settings.correct_winner_points[roundAdvancementKey(currentGame.round)];
+    }
+
+    // RA points — for original teams only (RA is tied to original bracket predictions)
+    if (settings.scoring_mode.includes("round_advancement")) {
+      // In fixed mode, currentWinner IS the original predicted winner
+      // In reseeded Case B, also the same
+      // In reseeded Case C: RA only applies if the winner is the original team
+      const raCandidate = isFixed ? currentWinner : originalInSlot.find((t) => t === currentWinner);
+      if (raCandidate && !eliminatedSchools.has(raCandidate)) {
+        const originalPredictedExit = originalBracket.predictedExitRound[raCandidate];
+        if (originalPredictedExit && roundBefore(currentGame.round, originalPredictedExit)) {
+          maxPotential += settings.round_points[roundAdvancementKey(currentGame.round)];
+        }
+      }
+    }
+
+    // Seeding bonus — for the predicted loser if this is their predicted exit game
+    if (settings.seeding_bonus_enabled) {
+      // In fixed mode: check the original predicted loser
+      // In reseeded Case B: same
+      // In reseeded Case C: seeding bonus only for original teams
+      const seedingCandidate =
+        isFixed || originalInSlot.includes(currentLoser) ? currentLoser : null;
+
+      if (seedingCandidate && !eliminatedSchools.has(seedingCandidate)) {
+        const predictedExit = originalBracket.predictedExitRound[seedingCandidate];
+        if (predictedExit) {
+          const exitMatchesRound =
+            (currentGame.round === "CHAMPIONSHIP" &&
+              (predictedExit === "CHAMPIONSHIP_RUNNER_UP" ||
+                predictedExit === "CHAMPIONSHIP_WINNER")) ||
+            (currentGame.round !== "CHAMPIONSHIP" && currentGame.round === predictedExit);
+
+          if (exitMatchesRound && !isExcludedByLockMode(predictedExit, settings.lock_mode)) {
+            const bonusKey = predictedExitToSeedingBonusKey(predictedExit);
+            maxPotential += settings.seeding_bonus_points[bonusKey];
+          }
+        }
+      }
+
+      // Championship winner bonus (only counted once for the predicted champion who hasn't been eliminated)
+      if (
+        currentGame.round === "CHAMPIONSHIP" &&
+        !eliminatedSchools.has(currentWinner) &&
+        (isFixed || originalInSlot.includes(currentWinner))
+      ) {
+        const predictedExit = originalBracket.predictedExitRound[currentWinner];
+        if (predictedExit === "CHAMPIONSHIP_WINNER") {
+          maxPotential += settings.seeding_bonus_points.championship_winner;
+        }
+      }
+    }
+  }
+
+  return maxPotential;
+}
+
+// ─── recomputeAllScores ───────────────────────────────────────────────────────
 
 /**
  * Recompute and cache bracket scores for all competition entries in the given season.
  * Called after every successful results import.
- *
- * TODO(0.6.0): implement full score recomputation and leaderboard cache update.
  */
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export async function recomputeAllScores(_seasonId: string): Promise<void> {
-  // no-op until milestone 0.6.0
-}
+export async function recomputeAllScores(seasonId: string): Promise<void> {
+  const { db } = await import("@/lib/db");
+  const { resolveInitialBracket, applyActualResults } = await import("@/lib/bracket");
 
+  const season = await db.tournamentSeason.findUnique({
+    where: { id: seasonId },
+    select: { id: true, firstFourLockAt: true, roundOf64LockAt: true },
+  });
+  if (!season) {
+    console.warn(`[scoring] recomputeAllScores: season ${seasonId} not found`);
+    return;
+  }
+
+  // Load all tournament results for the season
+  const allResults = await db.tournamentResult.findMany({
+    where: { seasonId },
+    select: { bracketSlotId: true, winningSchoolId: true, losingSchoolId: true },
+  });
+
+  // Load all bracket slots for the season (both genders)
+  const allSlotsRaw = await db.bracketSlot.findMany({
+    where: { seasonId },
+    select: {
+      id: true,
+      gender: true,
+      round: true,
+      slotIndex: true,
+      region: true,
+      schoolId: true,
+      nextSlotId: true,
+      feedingSlots: { select: { id: true } },
+    },
+  });
+
+  const toBracketSlotInput = (s: (typeof allSlotsRaw)[number]): BracketSlotInput => ({
+    id: s.id,
+    round: s.round as Round,
+    slotIndex: s.slotIndex,
+    region: s.region,
+    schoolId: s.schoolId,
+    nextSlotId: s.nextSlotId,
+    feedingSlotIds: s.feedingSlots.map((f) => f.id),
+  });
+
+  const mensBracketSlots = allSlotsRaw.filter((s) => s.gender === "MENS").map(toBracketSlotInput);
+  const womensBracketSlots = allSlotsRaw
+    .filter((s) => s.gender === "WOMENS")
+    .map(toBracketSlotInput);
+
+  const mensSlotIds = new Set(mensBracketSlots.map((s) => s.id));
+  const womensSlotIds = new Set(womensBracketSlots.map((s) => s.id));
+
+  const mensActualResults: ActualResultItem[] = allResults
+    .filter((r) => mensSlotIds.has(r.bracketSlotId))
+    .map((r) => ({
+      bracketSlotId: r.bracketSlotId,
+      winningSchoolId: r.winningSchoolId,
+      losingSchoolId: r.losingSchoolId,
+    }));
+
+  const womensActualResults: ActualResultItem[] = allResults
+    .filter((r) => womensSlotIds.has(r.bracketSlotId))
+    .map((r) => ({
+      bracketSlotId: r.bracketSlotId,
+      winningSchoolId: r.winningSchoolId,
+      losingSchoolId: r.losingSchoolId,
+    }));
+
+  // Load all competitions for this season
+  const competitions = await db.competition.findMany({
+    where: { seasonId },
+    select: { id: true, settingsJson: true },
+  });
+
+  for (const comp of competitions) {
+    const settings = comp.settingsJson as CompetitionSettings;
+    const lockAt =
+      settings.lock_mode === "before_first_four" ? season.firstFourLockAt : season.roundOf64LockAt;
+
+    if (new Date() < lockAt) continue; // competition not yet locked — skip all entries
+
+    const entries = await db.competitionEntry.findMany({
+      where: { competitionId: comp.id },
+      select: {
+        id: true,
+        rankingList: {
+          select: {
+            entries: { select: { schoolId: true, rank: true } },
+          },
+        },
+        resolvedBracket: { select: { id: true, mensJson: true, womensJson: true } },
+      },
+    });
+
+    for (const entry of entries) {
+      try {
+        const rankMap: RankMap = {};
+        for (const e of entry.rankingList.entries) {
+          rankMap[e.schoolId] = e.rank;
+        }
+
+        if (mensBracketSlots.length === 0 || womensBracketSlots.length === 0) continue;
+
+        // Resolve and cache the original bracket (set-once)
+        let mensOriginal: ResolvedBracketData;
+        let womensOriginal: ResolvedBracketData;
+
+        if (entry.resolvedBracket) {
+          mensOriginal = entry.resolvedBracket.mensJson as unknown as ResolvedBracketData;
+          womensOriginal = entry.resolvedBracket.womensJson as unknown as ResolvedBracketData;
+        } else {
+          mensOriginal = resolveInitialBracket({
+            gender: "MENS",
+            slots: mensBracketSlots,
+            rankMap,
+          });
+          womensOriginal = resolveInitialBracket({
+            gender: "WOMENS",
+            slots: womensBracketSlots,
+            rankMap,
+          });
+          await db.resolvedBracket.create({
+            data: {
+              competitionEntryId: entry.id,
+              mensJson: mensOriginal as unknown as Parameters<
+                typeof db.resolvedBracket.create
+              >[0]["data"]["mensJson"],
+              womensJson: womensOriginal as unknown as Parameters<
+                typeof db.resolvedBracket.create
+              >[0]["data"]["womensJson"],
+            },
+          });
+        }
+
+        // Apply actual results for reseeding
+        const mensCurrent =
+          settings.reseed_mode === "reseed_by_ranking"
+            ? applyActualResults(mensOriginal, mensActualResults, rankMap)
+            : mensOriginal;
+        const womensCurrent =
+          settings.reseed_mode === "reseed_by_ranking"
+            ? applyActualResults(womensOriginal, womensActualResults, rankMap)
+            : womensOriginal;
+
+        // Score the entry
+        const scoreResult = scoreEntry({
+          mens: {
+            originalBracket: mensOriginal,
+            currentBracket: mensCurrent,
+            actualResults: mensActualResults,
+          },
+          womens: {
+            originalBracket: womensOriginal,
+            currentBracket: womensCurrent,
+            actualResults: womensActualResults,
+          },
+          settings,
+        });
+
+        const breakdownJson: ScoreBreakdownJson = {
+          mens: {
+            roundAdvancement: scoreResult.breakdown.mens.roundAdvancement,
+            correctWinner: scoreResult.breakdown.mens.correctWinner,
+            seedingBonus: scoreResult.breakdown.mens.seedingBonus,
+            total: scoreResult.breakdown.mens.total,
+          },
+          womens: {
+            roundAdvancement: scoreResult.breakdown.womens.roundAdvancement,
+            correctWinner: scoreResult.breakdown.womens.correctWinner,
+            seedingBonus: scoreResult.breakdown.womens.seedingBonus,
+            total: scoreResult.breakdown.womens.total,
+          },
+          total: scoreResult.totalScore,
+        };
+
+        const maxPotentialRemaining =
+          computeMaxPotentialGender(mensOriginal, mensCurrent, mensActualResults, settings) +
+          computeMaxPotentialGender(womensOriginal, womensCurrent, womensActualResults, settings);
+
+        await db.entryScore.upsert({
+          where: { competitionEntryId: entry.id },
+          create: {
+            competitionEntryId: entry.id,
+            mensScore: scoreResult.mensScore,
+            womensScore: scoreResult.womensScore,
+            totalScore: scoreResult.totalScore,
+            tiebreaker: scoreResult.tiebreaker,
+            breakdownJson: breakdownJson as unknown as Parameters<
+              typeof db.entryScore.upsert
+            >[0]["create"]["breakdownJson"],
+            maxPotentialRemaining,
+          },
+          update: {
+            mensScore: scoreResult.mensScore,
+            womensScore: scoreResult.womensScore,
+            totalScore: scoreResult.totalScore,
+            tiebreaker: scoreResult.tiebreaker,
+            breakdownJson: breakdownJson as unknown as Parameters<
+              typeof db.entryScore.upsert
+            >[0]["update"]["breakdownJson"],
+            maxPotentialRemaining,
+            computedAt: new Date(),
+          },
+        });
+      } catch (err) {
+        console.warn(`[scoring] Failed to score entry ${entry.id}:`, err);
+      }
+    }
+  }
+}

@@ -11,6 +11,50 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.6.0] — 2026-03-14
+
+### Bracket Viewer & Leaderboard
+
+- Schema additions (migration `20260314212037_add_bracket_score_fields`):
+  - `BracketSlot.isInProgress Boolean @default(false)` — set during import while a game is live; cleared on completion
+  - `EntryScore.breakdownJson Json?` — per-method, per-gender point breakdown (`ScoreBreakdownJson` shape)
+  - `EntryScore.maxPotentialRemaining Int?` — maximum additional points the entry could still earn
+
+- `src/lib/scoring.ts` — implemented `recomputeAllScores`:
+  - Resolves and caches `ResolvedBracket` (original bracket, set-once) for each locked entry
+  - Applies `applyActualResults` for `reseed_by_ranking` competitions
+  - Calls `scoreEntry` and upserts `EntryScore` with full breakdown and max potential
+  - Max potential computed via three-case classification for reseeded brackets (Cases A/B/C)
+
+- `src/lib/import.ts` — `importResults` now sets `BracketSlot.isInProgress = true` for live games, clears it on
+  completion; drives the "In Progress" chip in the bracket viewer
+
+- `src/types/index.ts` — added `ScoreBreakdownJson`, `LeaderboardEntry`, `LeaderboardResponse`, `EntryScoreDetail`,
+  `EntryDetailResponse`, `BracketViewerResponse`
+
+- New API routes:
+  - `GET /api/competitions/[id]/leaderboard` — ranked entries with scores, max potential, tiebreaker
+  - `GET /api/competitions/[id]/entries/[entryId]` — entry detail with resolved bracket, score breakdown, actuals
+  - `GET /api/ranking-lists/[id]/bracket` — standalone bracket resolution for a ranking list
+
+- `src/components/bracket/bracket-viewer.tsx` — `"use client"` component with Men's/Women's tabs, region grid, round
+  columns, four chip states (✅ Correct / ❌ Wrong / 🔄 In Progress / ⬜ Upcoming)
+
+- `src/app/competition/[id]/leaderboard/page.tsx` — ranked leaderboard table with Men's, Women's, total, max remaining,
+  and tiebreaker columns; guarded by first-result check
+
+- `src/app/competition/[id]/entries/[entryId]/page.tsx` — entry detail with score summary panel (total, breakdown by
+  method, max remaining) and full bracket viewer with score overlays
+
+- `src/app/bracket/[id]/page.tsx` — standalone bracket preview for a user's own ranking list
+
+- Lobby wiring: "Leaderboard →" button appears once first game result exists; entry names link to detail page once
+  leaderboard is available
+
+- Ranking list card: added "Bracket" link to `/bracket/[id]`
+
+---
+
 ## [0.5.0] — 2026-03-14
 
 ### Competitions (Group Play)

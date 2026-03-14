@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { Lock, Users, Trophy } from "lucide-react";
+import { Lock, Users, Trophy, BarChart2 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import {
@@ -142,6 +142,10 @@ export default async function CompetitionLobbyPage({ params }: Props) {
 
   const canSubmit = isMember && !locked && userEntries.length < settings.max_lists_per_user;
 
+  // Leaderboard is shown only once the first game result exists
+  const firstResult = await db.tournamentResult.findFirst({ where: { seasonId: season.id } });
+  const leaderboardAvailable = !!firstResult;
+
   // Status banner
   const statusBanner = (() => {
     if (locked) return { text: "Locked — Tournament in progress", color: "zinc" };
@@ -198,6 +202,21 @@ export default async function CompetitionLobbyPage({ params }: Props) {
 
         {/* Actions */}
         <div className="flex flex-wrap gap-2">
+          {leaderboardAvailable ? (
+            <Link
+              href={`/competition/${id}/leaderboard`}
+              className="inline-flex items-center gap-1.5 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900"
+            >
+              <BarChart2 className="h-4 w-4" />
+              Leaderboard
+            </Link>
+          ) : (
+            locked && (
+              <p className="self-center text-xs text-zinc-400 dark:text-zinc-500">
+                Leaderboard available once the first game begins.
+              </p>
+            )
+          )}
           {!isMember && joinable && (
             <form
               action={async () => {
@@ -268,6 +287,7 @@ export default async function CompetitionLobbyPage({ params }: Props) {
             isOrganizer={isOrganizer}
             isLocked={locked}
             currentUserId={userId}
+            leaderboardAvailable={leaderboardAvailable}
           />
         </div>
 

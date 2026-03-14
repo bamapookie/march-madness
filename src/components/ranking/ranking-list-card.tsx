@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Lock, Pencil, Trash2 } from "lucide-react";
+import { Lock, Pencil, Trash2, BarChart2 } from "lucide-react";
 
 import type { RankingListSummary } from "@/types";
 
@@ -88,6 +88,13 @@ export function RankingListCard({ list }: Props) {
 
       {/* Actions */}
       <div className="flex shrink-0 items-center gap-2">
+        <Link
+          href={`/bracket/${list.id}`}
+          className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          <BarChart2 className="h-3.5 w-3.5" />
+          Bracket
+        </Link>
         <Link
           href={`/ranking/${list.id}`}
           className="inline-flex items-center gap-1.5 rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"

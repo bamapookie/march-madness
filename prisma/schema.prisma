@@ -170,7 +170,8 @@ model BracketSlot {
   seed        Int? // initial seed assigned to this slot (1–16, or 11/16 for First Four)
   schoolId    String? // school initially seeded into this slot
   nextSlotId  String? // slot the winner advances into; null for Championship
-  espnEventId String? @unique // ESPN event/game ID; set on game slots after scheduling; null for leaf slots
+  espnEventId  String?  @unique // ESPN event/game ID; set on game slots after scheduling; null for leaf slots
+  isInProgress Boolean  @default(false) // true while ESPN reports this game as in-progress; cleared when result is recorded
 
   season            TournamentSeason   @relation(fields: [seasonId], references: [id])
   school            School?            @relation(fields: [schoolId], references: [id])
@@ -360,13 +361,15 @@ model ResolvedBracket {
 }
 
 model EntryScore {
-  id                 String   @id @default(cuid())
-  competitionEntryId String   @unique
-  mensScore          Int      @default(0)
-  womensScore        Int      @default(0)
-  totalScore         Int      @default(0)
-  tiebreaker         Int      @default(0) // abs(mensScore - womensScore); lower is better
-  computedAt         DateTime @default(now())
+  id                    String   @id @default(cuid())
+  competitionEntryId    String   @unique
+  mensScore             Int      @default(0)
+  womensScore           Int      @default(0)
+  totalScore            Int      @default(0)
+  tiebreaker            Int      @default(0) // abs(mensScore - womensScore); lower is better
+  breakdownJson         Json?    // ScoreBreakdownJson shape; null until first score computation
+  maxPotentialRemaining Int?     // null until first score computation
+  computedAt            DateTime @default(now())
 
   competitionEntry CompetitionEntry @relation(fields: [competitionEntryId], references: [id], onDelete: Cascade)
 

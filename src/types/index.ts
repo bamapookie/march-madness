@@ -349,3 +349,82 @@ export type RankingListDetail = {
   createdAt: string;
   updatedAt: string;
 };
+
+// ─── Scoring display ──────────────────────────────────────────────────────────
+
+/**
+ * Stored in EntryScore.breakdownJson.
+ * Captures earned points broken down by scoring method and gender so the UI can
+ * show exactly where every point came from.
+ */
+export type ScoreBreakdownJson = {
+  mens: {
+    roundAdvancement: number;
+    correctWinner: number;
+    seedingBonus: number;
+    total: number;
+  };
+  womens: {
+    roundAdvancement: number;
+    correctWinner: number;
+    seedingBonus: number;
+    total: number;
+  };
+  total: number;
+};
+
+/** One row in the competition leaderboard. */
+export type LeaderboardEntry = {
+  rank: number;
+  entryId: string;
+  userId: string;
+  userName: string | null;
+  userAvatar: string | null;
+  rankingListName: string;
+  mensScore: number;
+  womensScore: number;
+  totalScore: number;
+  /** Math.abs(mens - womens). Lower is better (tiebreaker). */
+  tiebreaker: number;
+  /** null = scoring has not yet run for this entry. */
+  maxPotentialRemaining: number | null;
+  computedAt: string | null; // ISO-8601; null = not yet computed
+};
+
+/** Response shape for GET /api/competitions/[id]/leaderboard */
+export type LeaderboardResponse = {
+  entries: LeaderboardEntry[];
+  isLocked: boolean;
+  lastComputedAt: string | null;
+};
+
+/** Score detail for one competition entry. */
+export type EntryScoreDetail = {
+  entryId: string;
+  rankingListId: string;
+  rankingListName: string;
+  mensScore: number;
+  womensScore: number;
+  totalScore: number;
+  tiebreaker: number;
+  maxPotentialRemaining: number | null;
+  breakdown: ScoreBreakdownJson | null;
+  computedAt: string | null;
+};
+
+/** Response shape for GET /api/competitions/[id]/entries/[entryId] */
+export type EntryDetailResponse = {
+  entry: CompetitionEntrySummary;
+  score: EntryScoreDetail | null;
+  resolvedBracket: ResolvedBracketData | null;
+  actualResults: ActualResultItem[];
+  inProgressSlotIds: string[];
+};
+
+/** Response shape for GET /api/ranking-lists/[id]/bracket */
+export type BracketViewerResponse = {
+  resolvedBracket: ResolvedBracketData;
+  actualResults: ActualResultItem[];
+  inProgressSlotIds: string[];
+  schoolNames: Record<string, string>;
+};
