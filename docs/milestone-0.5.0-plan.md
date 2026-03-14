@@ -187,6 +187,19 @@ All return `{ data, error }`. All mutating routes require authentication.
   5. `db.competition.update(...)`
 - **Returns:** `CompetitionSummary`
 
+### `POST /api/competitions/[id]/rotate-code`
+
+- **Auth:** required; organizer only
+- **Logic:**
+  1. Load competition; 404 if not found; 403 if not organizer
+  2. Reject 409 if `isJoinCutoffPassed` — code rotation only allowed before cutoff
+  3. Generate `newCode = crypto.randomBytes(4).toString('hex')`
+  4. `db.competition.update({ joinCode: newCode })`
+  5. The old code is immediately invalidated — any `/join/[oldCode]` links will return 404
+  6. Existing members are unaffected; they retain membership and may continue submitting entries (up to
+     `max_lists_per_user`) without the new code
+- **Returns:** `{ joinCode: string }` (the new code)
+
 ### `GET /api/competitions`
 
 - **Auth:** required
@@ -298,6 +311,8 @@ On submit: `POST /api/competitions` → `router.push('/competition/' + id)`
   - Locked: "Locked — Tournament in progress"
 - **Organizer settings** (`"use client"` child, organizer-only, pre-cutoff only):
   - Toggle `isPublic`, edit `joinCutoffAt` → `PATCH /api/competitions/[id]` + `router.refresh()`
+  - "Rotate Join Code" button → `POST /api/competitions/[id]/rotate-code`; displays new code immediately and updates the
+    copy chip; old code silently stops working
 - **Actions bar:**
   - Non-member + `isJoinable` → "Join" (calls `POST /api/competitions/join`)
   - Member + not locked + `userEntries.length < max_lists_per_user` → "Submit Entry" dropdown
@@ -343,12 +358,13 @@ Two-section layout: **My Competitions** + **My Ranking Lists** (reuse `RankingLi
 4.  API routes:
       a. POST   /api/competitions
       b. PATCH  /api/competitions/[id]
-      c. GET    /api/competitions
-      d. GET    /api/competitions/public
-      e. GET    /api/competitions/[id]
-      f. POST   /api/competitions/join
-      g. POST   /api/competitions/[id]/entries
-      h. DELETE /api/competitions/[id]/entries/[entryId]
+      c. POST   /api/competitions/[id]/rotate-code
+      d. GET    /api/competitions
+      e. GET    /api/competitions/public
+      f. GET    /api/competitions/[id]
+      g. POST   /api/competitions/join
+      h. POST   /api/competitions/[id]/entries
+      i. DELETE /api/competitions/[id]/entries/[entryId]
 5.  src/app/join/[code]/page.tsx
 6.  src/components/competition/create-competition-form.tsx
 7.  src/app/competition/create/page.tsx

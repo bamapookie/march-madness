@@ -249,7 +249,9 @@ difference wins. Rewards balanced knowledge across both tournaments.
 
 **Join code:** Every competition has a unique `joinCode` (8-char hex string, auto-generated at creation). The invite URL
 is `/join/[joinCode]`. Both public and private competitions can be joined this way (before cutoff). The code never
-changes.
+changes automatically, but the organizer may rotate it before the cutoff — the old code immediately stops working for
+new joins, while all existing members retain their membership. Members who have already submitted at least one entry may
+continue submitting up to the `max_lists_per_user` limit without needing the new code; they are already members.
 
 **Join cutoff (`joinCutoffAt`):** Optional timestamp set by the organizer. If set, it must be ≤ the competition's
 effective lock time. After cutoff: no new joins, competition hidden from public lobby, access restricted to organizer +
