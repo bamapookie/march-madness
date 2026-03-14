@@ -348,9 +348,9 @@ No new top-level nav link needed — bracket and leaderboard are always reached 
 
 ## Decision points to resolve before implementation
 
-1. **Reseeded bracket caching**: `recomputeAllScores` recomputes the reseeded bracket on every run. For competitions
-   with many entries and `reseed_by_ranking`, this is fine since scoring runs only on import (not on every read). No
-   schema change needed — the current approach is sufficient.
+1. **Reseeded bracket caching** ✅ _resolved_: `recomputeAllScores` recomputes the reseeded bracket on every run. For
+   competitions with many entries and `reseed_by_ranking`, this is fine since scoring runs only on import (not on every
+   read). No schema change needed — the current approach is sufficient.
 
 2. **Leaderboard visibility before the first game** ✅ _resolved_: The leaderboard link and page are hidden until at
    least one `TournamentResult` row exists for the season (i.e. the first game of the tournament is in progress or
