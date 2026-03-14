@@ -2,11 +2,35 @@
 
 ## Prerequisites confirmed
 
-- `resolved_brackets` and `entry_scores` tables are **already in the schema** — no migration needed.
+- `resolved_brackets` and `entry_scores` tables are already in the schema.
 - `recomputeAllScores(seasonId)` stub already exists in `src/lib/scoring.ts` and is already called by
   `src/lib/import.ts` after every successful import.
 - `resolveInitialBracket` and `applyActualResults` are fully implemented in `src/lib/bracket.ts`.
 - `scoreEntry` is fully implemented in `src/lib/scoring.ts`.
+- **A migration is required** for three new fields added in this milestone (see Schema Changes below).
+
+---
+
+## Schema Changes (migration required)
+
+### `BracketSlot` — add `isInProgress`
+
+```prisma
+isInProgress Boolean @default(false)
+```
+
+Set to `true` during each import run when the ESPN event for this slot has `status.type.state === "in"`. Cleared back to
+`false` when the final result is recorded for this slot. Allows the bracket viewer to show a distinct "Game in progress"
+chip without an extra API call at view time.
+
+### `EntryScore` — add `breakdownJson` and `maxPotentialRemaining`
+
+```prisma
+breakdownJson        Json? // ScoreBreakdownJson shape; null until first score computation
+maxPotentialRemaining Int?  // null until first score computation; -1 signals "not computable"
+```
+
+Both fields are nullable and backwards-compatible — existing rows keep `null` until the next `recomputeAllScores` run.
 
 ---
 
@@ -25,9 +49,11 @@ Replace the no-op stub with a real implementation. This is the heart of the mile
 6. For each entry: a. Build `rankMap: RankMap` from the entry's `rankingEntries`. b. If a `ResolvedBracket` row does not
    yet exist for this entry, call `resolveInitialBracket(...)` and upsert it. Once written, the original bracket never
    changes. c. If `reseed_mode = "reseed_by_ranking"`, call
-   `applyActualResults(originalBracket, actualResults,    "reseed_by_ranking", rankMap)` to get the current reseeded
+   `applyActualResults(originalBracket, actualResults, "reseed_by_ranking", rankMap)` to get the current reseeded
    bracket. Otherwise use the original bracket. d. Call `scoreEntry(...)` with the (possibly reseeded) bracket, actual
-   results, and competition settings. e. Upsert the `EntryScore` row for this entry.
+   results, and competition settings. e. Serialize `scoreEntry`'s `breakdown` result into `breakdownJson` (see Step 2
+   for shape). f. Compute `maxPotentialRemaining` (see Step 1a below). g. Upsert the `EntryScore` row with `mensScore`,
+   `womensScore`, `totalScore`, `tiebreaker`, `breakdownJson`, and `maxPotentialRemaining`.
 7. Log progress/errors; do not throw — failures for individual entries should not abort the whole run.
 
 **File:** `src/lib/scoring.ts` (replace stub in place; no new file needed).
@@ -39,13 +65,38 @@ Replace the no-op stub with a real implementation. This is the heart of the mile
 
 ```ts
 BracketResolutionInput = {
-  rankMap: RankMap;
-  bracketSlots: BracketSlotInput[];
   gender: Gender;
+  slots: BracketSlotInput[]; // field is `slots`, not `bracketSlots`
+  rankMap: RankMap;
 }
 ```
 
 Call it once for `MENS` and once for `WOMENS`; store both JSON blobs in `mensJson` / `womensJson`.
+
+### Step 1a — Computing `maxPotentialRemaining`
+
+The goal is: given the current state of the real tournament, what is the maximum number of additional points this entry
+could still earn if all of their remaining predictions come true?
+
+**For `reseed_mode = "fixed"`:**
+
+Build a set of eliminated schools from `actualResults` (all `losingSchoolId` values). Then for each unplayed game slot
+(no `TournamentResult` for that `bracketSlotId`), look up the predicted winner from the original bracket and check if
+that school is eliminated. If not eliminated, the user could still earn:
+
+- **Correct winner**: `correct_winner_points[round]` if `"correct_winner"` is in `scoring_mode`.
+- **Round advancement**: `round_points[round]` if `"round_advancement"` is in `scoring_mode` AND this round is strictly
+  before the team's predicted exit round (i.e. a round where they were predicted to win).
+- **Seeding accuracy bonus**: if `seeding_bonus_enabled` AND this is the team's predicted exit game (the round they were
+  predicted to _lose_ in), add `seeding_bonus_points[predictedExitRound]`. This bonus is only counted once per team —
+  for the specific game slot where they were predicted to exit.
+
+Sum across all unplayed game slots for both genders. Exclude `first_four` if `lock_mode = "before_round_of_64"`.
+
+**For `reseed_mode = "reseed_by_ranking"`:**
+
+Set `maxPotentialRemaining = -1` (sentinel meaning "not computable"). Display as "N/A" in the UI. This is an open
+question — see Decision Point 5.
 
 ---
 
@@ -54,6 +105,26 @@ Call it once for `MENS` and once for `WOMENS`; store both JSON blobs in `mensJso
 Add the following types:
 
 ```ts
+// Leaderboard row returned by GET /api/competitions/[id]/leaderboard
+// The shape stored in EntryScore.breakdownJson.
+// Captures earned points by scoring method and gender so the UI can show a full
+// breakdown of where every point came from.
+export type ScoreBreakdownJson = {
+  mens: {
+    roundAdvancement: number; // points from round_advancement scoring mode
+    correctWinner: number; // points from correct_winner scoring mode
+    seedingBonus: number; // points from seeding accuracy bonus
+    total: number;
+  };
+  womens: {
+    roundAdvancement: number;
+    correctWinner: number;
+    seedingBonus: number;
+    total: number;
+  };
+  total: number;
+};
+
 // Leaderboard row returned by GET /api/competitions/[id]/leaderboard
 export type LeaderboardEntry = {
   rank: number;
@@ -66,6 +137,7 @@ export type LeaderboardEntry = {
   womensScore: number;
   totalScore: number;
   tiebreaker: number; // abs(mens - womens); lower is better
+  maxPotentialRemaining: number | null; // null = not yet computed; -1 = N/A (reseed mode)
   computedAt: string | null; // ISO timestamp; null = not yet computed
 };
 
@@ -85,6 +157,8 @@ export type EntryScoreDetail = {
   womensScore: number;
   totalScore: number;
   tiebreaker: number;
+  maxPotentialRemaining: number | null; // null = not yet computed; -1 = N/A (reseed mode)
+  breakdown: ScoreBreakdownJson | null; // null until first computation
   computedAt: string | null;
 };
 
@@ -94,6 +168,7 @@ export type EntryDetailResponse = {
   score: EntryScoreDetail | null;
   resolvedBracket: ResolvedBracketData | null; // null if not yet computed
   actualResults: ActualResultItem[];
+  inProgressSlotIds: string[]; // bracket slot IDs for games currently in progress
 };
 ```
 
@@ -119,6 +194,7 @@ The file currently only has `DELETE`. Add `GET`:
   entry (post-cutoff access rules).
 - Load `CompetitionEntry` with `resolvedBracket`, `score`, and `rankingList` → `rankingEntries` → `school`.
 - Load `TournamentResult` rows for the season as `ActualResultItem[]`.
+- Query `BracketSlot` where `isInProgress = true` for the season; extract their IDs as `inProgressSlotIds`.
 - Return `{ data: EntryDetailResponse, error: null }`.
 - If `resolvedBracket` is null (not yet computed), return it as null — the UI will show a placeholder.
 
@@ -129,7 +205,9 @@ Standalone bracket viewer for a user's own ranking list (outside any competition
 - Auth required; must own the ranking list.
 - Resolve the bracket live from `rankingEntries` + `bracketSlots` (call `resolveInitialBracket`).
 - Load actual results for the season.
-- Return `{ data: { resolvedBracket: ResolvedBracketData, actualResults: ActualResultItem[] }, error: null }`.
+- Query `BracketSlot` where `isInProgress = true` for the season; extract their IDs as `inProgressSlotIds`.
+- Return
+  `{ data: { resolvedBracket: ResolvedBracketData, actualResults: ActualResultItem[], inProgressSlotIds: string[] }, error: null }`.
 
 ---
 
@@ -143,6 +221,7 @@ A `"use client"` React component.
 {
   resolvedBracket: ResolvedBracketData;   // mens + womens resolved games
   actualResults: ActualResultItem[];
+  inProgressSlotIds: string[];            // slot IDs for games currently being played
   schoolNames: Record<string, string>;    // schoolId → display name
   showScore?: boolean;                    // show correct/wrong overlays
 }
@@ -155,12 +234,20 @@ A `"use client"` React component.
   - 4 region cards arranged in a 2×2 grid (e.g. East, West top row; South, Midwest bottom row).
   - Each region card shows rounds as columns: R64 → R32 → S16 → E8 (left to right).
   - Each game slot shows: School A name vs. School B name, with predicted winner highlighted.
-  - Overlay chip per slot: 🟢 correct / 🔴 wrong / ⬜ not yet played — determined by comparing predicted winner to
-    `actualResults`.
+  - Overlay chip per slot when `showScore` is true — four mutually exclusive states determined in this priority order:
+    1. 🔄 **In progress** — slot ID is in `inProgressSlotIds` (game is currently being played; no winner yet).
+    2. ✅ **Correct** — game is complete and predicted winner matches `actualResults`.
+    3. ❌ **Wrong** — game is complete and predicted winner does not match `actualResults`.
+    4. ⬜ **Not yet played** — no result and not in progress.
+  - The "in progress" state takes priority over everything since a result may have just arrived or may be stale.
   - Below the 4 regions: a **Final Four / Championship** section showing the 2 semis + championship game.
 
-**No SVG bracket lines required for this milestone.** Visual polish (connecting lines, bracket art) is deferred to
-0.7.0.
+**No SVG bracket lines required for this milestone.** The focus is getting all information into the bracket view
+clearly. Visual polish (connecting lines, bracket art) is deferred to 0.7.0.
+
+**Import responsibility:** During each import run, `src/lib/import.ts` must set `isInProgress = true` on any
+`BracketSlot` whose ESPN event has `status.type.state === "in"`, and set `isInProgress = false` on slots that are now
+complete (result recorded) or not yet started. This flag is the sole source of truth for the "in progress" chip.
 
 **Fallback:** If `resolvedBracket` is null, show a "Bracket not yet available" message.
 
@@ -175,10 +262,11 @@ Server component.
   if extracted).
 - Render a ranked table:
 
-  | #   | User          | Entry                            | Men's | Women's | Total | Tiebreaker |
-  | --- | ------------- | -------------------------------- | ----- | ------- | ----- | ---------- |
-  | 1   | Avatar + Name | Entry name (link → entry detail) | 120   | 115     | 235   | 5          |
+  | #   | User          | Entry                            | Men's | Women's | Total | Max Remaining | Tiebreaker |
+  | --- | ------------- | -------------------------------- | ----- | ------- | ----- | ------------- | ---------- |
+  | 1   | Avatar + Name | Entry name (link → entry detail) | 120   | 115     | 235   | 40            | 5          |
 
+- **Max Remaining** column: show the `maxPotentialRemaining` value. If `-1`, show "N/A". If `null`, omit or show "—".
 - Tiebreaker column: show the value with a tooltip "Lower = better balanced across Men's & Women's".
 - Guard: if no `TournamentResult` rows exist for the season, redirect to the competition lobby — the lobby will show the
   "first game" message in place of the leaderboard link.
@@ -194,10 +282,22 @@ Server component.
 
 - Auth + access check (entry owner, organizer, or member w/ entry).
 - Render two panels side by side (or stacked on mobile):
-  - **Score panel**: total score, Men's score, Women's score, tiebreaker value, `computedAt` timestamp. If score is
-    null, show "Scores not yet computed."
+  - **Score panel**: total score, Men's score, Women's score, tiebreaker value, max potential remaining, `computedAt`
+    timestamp. If score is null, show "Scores not yet computed."
+    - Include a **score breakdown table** driven by `breakdownJson`:
+
+      | Scoring Method    | Men's | Women's | Total |
+      | ----------------- | ----- | ------- | ----- |
+      | Correct Winner    | 80    | 75      | 155   |
+      | Round Advancement | 30    | 30      | 60    |
+      | Seeding Bonus     | 10    | 10      | 20    |
+      | **Total**         | 120   | 115     | 235   |
+
+    - Only show rows for scoring methods that are active in the competition settings.
+
   - **Bracket panel**: `<BracketViewer>` component with `showScore={true}` and actual results overlaid. If
     `resolvedBracket` is null, show "Bracket not yet available — check back after the competition locks."
+
 - "Back to Leaderboard" link.
 
 ---
@@ -254,31 +354,44 @@ No new top-level nav link needed — bracket and leaderboard are always reached 
      leaderboard page itself (`/competition/[id]/leaderboard`) should also guard against direct URL access and redirect
      to the competition lobby with the same message if no results exist yet.
 
-3. **Bracket viewer visual fidelity**: The plan calls for a "region cards with round columns" layout without SVG
-   connecting lines. This is the simplest implementation that clearly shows all matchups. Full NCAA bracket art with
-   connecting lines can be added in 0.7.0 polish pass.
+3. **Bracket viewer visual fidelity** ✅ _resolved_: Deferred to 0.7.0. For this milestone, the priority is getting all
+   necessary information — matchup names, predicted winner, chip status — clearly visible in a functional layout.
+   Connecting lines and NCAA-style bracket art are a 0.7.0 polish task.
 
-4. **Score detail breakdown (round-by-round)**: `scoreEntry` returns a `ScoreBreakdown` with per-round breakdowns. The
-   entry detail page can show this as a table. Confirm whether the full breakdown should be stored in `EntryScore`
-   (requires a schema addition for a JSON `breakdownJson` column) or computed on the fly from the stored
-   `resolvedBracket` + actual results on every page load.
-   - **Recommendation**: add a `breakdownJson Json?` column to `EntryScore` (nullable, backwards-compatible). Populate
-     it during `recomputeAllScores`. This avoids re-running `scoreEntry` on every page view.
+4. **Score breakdown storage** ✅ _resolved_: Add `breakdownJson Json?` to `EntryScore` (nullable,
+   backwards-compatible). The shape (`ScoreBreakdownJson`) captures points by gender and by scoring method
+   (roundAdvancement, correctWinner, seedingBonus). Populated during `recomputeAllScores`; avoids re-running
+   `scoreEntry` on every page view. A migration is required (see Schema Changes above).
+
+5. **Max potential remaining under `reseed_by_ranking`** ⚠️ _open question_: For fixed brackets, max potential is
+   computed straightforwardly (see Step 1a). For reseeded brackets the situation is more complex:
+   - After reseeding, the bracket's future predicted matchups have already changed based on real results. We could
+     compute max potential from the _current_ reseeded state by assuming every current predicted winner wins all
+     remaining games. However, this is an approximation — as more real results come in, the reseeded bracket will
+     continue to change, so the "max potential" itself is a moving target.
+   - It is also unclear whether max potential in a reseeded bracket should account for correct-winner points (since
+     those are earned on slot-by-slot predictions that change with each reseed), round-advancement points (which are
+     always tied to original predictions), or both.
+   - **For this milestone**: store `-1` (sentinel "N/A") for reseeded competitions. Display "N/A" in all max remaining
+     cells. Revisit in a follow-up session before the tournament starts.
 
 ---
 
 ## Implementation order
 
 ```
-1. src/lib/scoring.ts          — implement recomputeAllScores
-2. src/types/index.ts          — add LeaderboardEntry, LeaderboardResponse, EntryScoreDetail, EntryDetailResponse
-3. API routes                  — leaderboard GET, entry GET, standalone bracket GET
-4. src/components/bracket/     — BracketViewer component
-5. Leaderboard page            — src/app/competition/[id]/leaderboard/page.tsx
-6. Entry detail page           — src/app/competition/[id]/entries/[entryId]/page.tsx
-7. Standalone bracket viewer   — src/app/bracket/[id]/page.tsx
-8. Nav & lobby wiring          — lobby + ranking list card links
+0. Migration          — add isInProgress to BracketSlot; breakdownJson + maxPotentialRemaining to EntryScore
+1. src/lib/scoring.ts — implement recomputeAllScores (+ Step 1a max potential)
+2. src/lib/import.ts  — update isInProgress flag on BracketSlot during each import run
+3. src/types/index.ts — add ScoreBreakdownJson, updated LeaderboardEntry, EntryScoreDetail, EntryDetailResponse
+4. API routes         — leaderboard GET, entry GET, standalone bracket GET
+5. src/components/bracket/ — BracketViewer component
+6. Leaderboard page   — src/app/competition/[id]/leaderboard/page.tsx
+7. Entry detail page  — src/app/competition/[id]/entries/[entryId]/page.tsx
+8. Standalone bracket viewer — src/app/bracket/[id]/page.tsx
+9. Nav & lobby wiring — lobby + ranking list card links
 ```
 
-Steps 1–3 are pure logic/API with no UI dependency; steps 4–7 depend on step 3 and on each other only loosely. Step 8 is
-the final wiring pass.
+The migration (step 0) and import update (step 2) are prerequisites for steps 1 and 5 respectively. Steps 3–4 are pure
+logic/API with no UI dependency; steps 5–8 depend on step 4 and on each other only loosely. Step 9 is the final wiring
+pass.
