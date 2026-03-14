@@ -242,6 +242,63 @@ export type ScoreResult = {
   };
 };
 
+// ─── Competitions ────────────────────────────────────────────────────────────
+
+/** Lightweight competition card for list views, the dashboard, and the public lobby. */
+export type CompetitionSummary = {
+  id: string;
+  name: string;
+  description: string | null;
+  isPublic: boolean;
+  organizerId: string;
+  organizerName: string | null;
+  memberCount: number;
+  entryCount: number;
+  isLocked: boolean;
+  lockAt: string; // ISO-8601 — effective lock time for this competition
+  joinCutoffAt: string | null; // ISO-8601 — null if no cutoff set
+  isJoinable: boolean; // false after cutoff or lock
+  joinCode: string; // used to build /join/[code] URL
+  userEntryCount: number; // 0 for unauthenticated or non-member viewers
+  isOrganizer: boolean;
+  isMember: boolean;
+  settings: CompetitionSettings;
+};
+
+/** Per-member row in the lobby. */
+export type CompetitionMemberSummary = {
+  id: string;
+  userId: string;
+  userName: string | null;
+  userEmail: string;
+  userImage: string | null;
+  entryCount: number;
+  joinedAt: string; // ISO-8601
+};
+
+/** Per-entry row in the lobby. */
+export type CompetitionEntrySummary = {
+  id: string;
+  userId: string;
+  userName: string | null;
+  rankingListId: string;
+  rankingListName: string;
+  submittedAt: string; // ISO-8601
+};
+
+/** Full lobby payload returned by GET /api/competitions/[id]. */
+export type CompetitionDetail = CompetitionSummary & {
+  members: CompetitionMemberSummary[];
+  entries: CompetitionEntrySummary[];
+  userEntries: CompetitionEntrySummary[];
+};
+
+/** Body shape for PATCH /api/competitions/[id] (organizer updates, pre-cutoff only). */
+export type CompetitionUpdateInput = {
+  isPublic?: boolean;
+  joinCutoffAt?: string | null; // ISO-8601 or null to clear
+};
+
 // ─── Ranking Lists ────────────────────────────────────────────────────────────
 
 export type LockModeType = "BEFORE_FIRST_FOUR" | "BEFORE_ROUND_OF_64";

@@ -54,7 +54,7 @@ Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round o
 - Schema additions: `mensEspnTournamentId`/`womensEspnTournamentId` on `TournamentSeason`; `espnEventId` on
   `BracketSlot`; new `ImportLog` model with `ImportStatus` enum
 
-### 0.5.0 — Competitions _(group play)_
+### 0.5.0 — Competitions _(group play)_ ✅ _complete_
 
 - API routes — create competition, join, submit ranking list entry, organizer update
 - Join code — auto-generated per competition; used in invite URLs (`/join/[code]`)
