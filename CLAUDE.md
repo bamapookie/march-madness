@@ -68,7 +68,7 @@ Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round o
 - Dashboard — user's competitions and ranking lists (`src/app/dashboard`)
 - Schema additions: `joinCode String @unique` and `joinCutoffAt DateTime?` on `Competition`
 
-### 0.6.0 — Bracket Viewer & Leaderboard _(scoring display)_
+### 0.6.0 — Bracket Viewer & Leaderboard _(scoring display)_ ✅ _complete_
 
 - Resolved bracket viewer — Men's and Women's side by side (`src/app/bracket`)
 - Score computation triggered on each results import

@@ -262,9 +262,7 @@ export async function importSchools(
     }
   }
 
-  console.log(
-    `[import] importSchools(${gender}): ${created} created, ${updated} updated`
-  );
+  console.log(`[import] importSchools(${gender}): ${created} created, ${updated} updated`);
   return { created, updated };
 }
 
@@ -297,11 +295,7 @@ function getFFLeafSlotIndex(ffIdx: number, teamOffset: 0 | 1): number {
  * Try to find the ESPN event ID for a game by matching team IDs within a
  * set of bracket round games.
  */
-function findEventId(
-  games: EspnTournamentGame[],
-  teamIdA: string,
-  teamIdB: string
-): string | null {
+function findEventId(games: EspnTournamentGame[], teamIdA: string, teamIdB: string): string | null {
   for (const game of games) {
     const ids = game.competitors.map((c) => c.team.id);
     if (ids.includes(teamIdA) && ids.includes(teamIdB)) return game.id;
@@ -684,8 +678,9 @@ export async function importBracketSlots(
         seasonId_gender_round_slotIndex: {
           seasonId,
           gender: prismaGender,
-          round: spec.nextSlotKey
-            .round as Parameters<typeof db.bracketSlot.upsert>[0]["create"]["round"],
+          round: spec.nextSlotKey.round as Parameters<
+            typeof db.bracketSlot.upsert
+          >[0]["create"]["round"],
           slotIndex: spec.nextSlotKey.slotIndex,
         },
       },
@@ -700,9 +695,7 @@ export async function importBracketSlots(
     }
   }
 
-  console.log(
-    `[import] importBracketSlots(${gender}): ${created} created, ${updated} updated`
-  );
+  console.log(`[import] importBracketSlots(${gender}): ${created} created, ${updated} updated`);
   return { created, updated };
 }
 
@@ -769,9 +762,12 @@ export async function importResults(
 
     for (const event of data.events ?? []) {
       const competition = event.competitions?.[0];
-      if (!competition?.status.type.completed) continue;
+      if (!competition) continue;
 
-      // Find bracket slot by espnEventId
+      const state = competition.status.type.state;
+      const completed = competition.status.type.completed;
+
+      // Find the bracket slot for this event
       let bracketSlot: { id: string } | null = null;
       try {
         bracketSlot = await db.bracketSlot.findUnique({
@@ -779,15 +775,26 @@ export async function importResults(
           select: { id: true },
         });
       } catch {
-        // espnEventId not found — slot may not be imported yet
+        // not found
       }
 
       if (!bracketSlot) {
-        console.warn(
-          `[import] No bracket slot found for ESPN event ${event.id} — run importBracketSlots first`
-        );
+        if (completed) {
+          console.warn(
+            `[import] No bracket slot found for ESPN event ${event.id} — run importBracketSlots first`
+          );
+        }
         continue;
       }
+
+      // Update isInProgress flag
+      const inProgress = state === "in" && !completed;
+      await db.bracketSlot.update({
+        where: { id: bracketSlot.id },
+        data: { isInProgress: inProgress },
+      });
+
+      if (!completed) continue;
 
       const winner = competition.competitors.find((c) => c.winner === true);
       const loser = competition.competitors.find((c) => c.winner === false);
@@ -870,9 +877,7 @@ export async function importResults(
     }
   }
 
-  console.log(
-    `[import] importResults(${gender}): ${created} created, ${updated} updated`
-  );
+  console.log(`[import] importResults(${gender}): ${created} created, ${updated} updated`);
   return { created, updated };
 }
 
@@ -1050,4 +1055,3 @@ function buildDateRange(startDate: Date, endDate: Date): string[] {
   }
   return dates;
 }
-

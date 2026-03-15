@@ -260,6 +260,7 @@ interface EntriesTableProps {
   isOrganizer: boolean;
   isLocked: boolean;
   currentUserId: string;
+  leaderboardAvailable?: boolean;
 }
 
 export function EntriesTable({
@@ -268,6 +269,7 @@ export function EntriesTable({
   isOrganizer,
   isLocked,
   currentUserId,
+  leaderboardAvailable = false,
 }: EntriesTableProps) {
   const router = useRouter();
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -316,7 +318,18 @@ export function EntriesTable({
             return (
               <tr key={e.id}>
                 <td className="py-2 text-zinc-700 dark:text-zinc-300">{e.userName ?? "Unknown"}</td>
-                <td className="py-2 text-zinc-700 dark:text-zinc-300">{e.rankingListName}</td>
+                <td className="py-2 text-zinc-700 dark:text-zinc-300">
+                  {leaderboardAvailable ? (
+                    <a
+                      href={`/competition/${competitionId}/entries/${e.id}`}
+                      className="text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      {e.rankingListName}
+                    </a>
+                  ) : (
+                    e.rankingListName
+                  )}
+                </td>
                 <td className="py-2 text-zinc-500 dark:text-zinc-400">
                   {new Date(e.submittedAt).toLocaleDateString("en-US", {
                     month: "short",
