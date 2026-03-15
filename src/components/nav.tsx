@@ -1,6 +1,7 @@
 import Link from "next/link";
-
 import { auth, signIn, signOut } from "@/lib/auth";
+import { NotificationBell } from "@/components/nav-notifications";
+import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
 
 export default async function Nav() {
   const session = await auth();
@@ -13,30 +14,37 @@ export default async function Nav() {
           March Madness
         </Link>
 
-        {/* Links + auth */}
+        {/* Desktop links + auth */}
         <div className="flex items-center gap-4">
           {session ? (
             <>
-              <Link
-                href="/dashboard"
-                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-              >
-                Dashboard
-              </Link>
-              <Link
-                href="/ranking"
-                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-              >
-                My Rankings
-              </Link>
-              <Link
-                href="/competition"
-                className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-              >
-                Competitions
-              </Link>
+              {/* Desktop-only nav links */}
+              <div className="hidden items-center gap-4 sm:flex">
+                <Link
+                  href="/dashboard"
+                  className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/ranking"
+                  className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  My Rankings
+                </Link>
+                <Link
+                  href="/competition"
+                  className="text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+                >
+                  Competitions
+                </Link>
+              </div>
 
-              <div className="flex items-center gap-3 border-l border-zinc-200 pl-4 dark:border-zinc-800">
+              {/* Notification bell (always visible when logged in) */}
+              <NotificationBell />
+
+              {/* Desktop avatar + sign-out */}
+              <div className="hidden items-center gap-3 border-l border-zinc-200 pl-4 sm:flex dark:border-zinc-800">
                 {session.user.image && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -59,6 +67,16 @@ export default async function Nav() {
                   </button>
                 </form>
               </div>
+
+              {/* Mobile hamburger — client island */}
+              <MobileNavDrawer
+                userName={session.user.name ?? null}
+                userImage={session.user.image ?? null}
+                signOutAction={async () => {
+                  "use server";
+                  await signOut({ redirectTo: "/" });
+                }}
+              />
             </>
           ) : (
             <form

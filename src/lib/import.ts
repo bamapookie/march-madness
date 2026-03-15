@@ -42,11 +42,66 @@ const ESPN_PATHS = {
   WOMENS: "womens-college-basketball",
 } as const;
 
-/** NCAA Tournament group IDs used in the scoreboard `?groups=` query param. */
-const ESPN_TOURNAMENT_GROUP_IDS = {
+/** NCAA Tournament group IDs used in the scoreboard `?groups=` query param.
+ *  Used as fallback when the season row has no stored group ID. */
+const ESPN_TOURNAMENT_GROUP_IDS_DEFAULT = {
   MENS: "50",
   WOMENS: "49",
 } as const;
+
+/** Candidate group IDs probed during auto-discovery. */
+const GROUP_ID_CANDIDATES = ["50", "49", "100", "101", "102", "103"] as const;
+
+/**
+ * Returns the ESPN scoreboard group ID for the given gender.
+ * Prefers the season's stored value; falls back to the hardcoded default.
+ */
+function getGroupId(
+  season: { mensEspnGroupId?: string | null; womensEspnGroupId?: string | null } | null,
+  gender: keyof typeof ESPN_PATHS
+): string {
+  const stored = gender === "MENS" ? season?.mensEspnGroupId : season?.womensEspnGroupId;
+  return stored ?? ESPN_TOURNAMENT_GROUP_IDS_DEFAULT[gender];
+}
+
+/**
+ * Probes a set of candidate scoreboard group IDs to discover which one returns
+ * NCAA Tournament events for the given gender.
+ * Returns the first matching group ID, or null if none found.
+ */
+export async function discoverEspnGroupIds(season: {
+  mensEspnGroupId?: string | null;
+  womensEspnGroupId?: string | null;
+}): Promise<{ mens: string | null; womens: string | null }> {
+  const year = new Date().getFullYear();
+  const probeDates = [`${year}0320`, `${year}0321`, `${year}0319`, `${year}0322`];
+
+  async function probeGender(gender: keyof typeof ESPN_PATHS): Promise<string | null> {
+    const path = ESPN_PATHS[gender];
+    for (const groupId of GROUP_ID_CANDIDATES) {
+      for (const date of probeDates) {
+        const url = `${ESPN_BASE}/${path}/scoreboard?groups=${groupId}&limit=100&dates=${date}`;
+        try {
+          const data = await fetchEspnJson<EspnScoreboardResponse>(url);
+          // A group ID is valid if it returns events that have bracket/tournament data
+          const hasTournamentEvents = (data.events ?? []).some((ev) =>
+            ev.competitions?.some(
+              (c) =>
+                c.tournament?.id || c.notes?.some((n) => n.headline?.toLowerCase().includes("ncaa"))
+            )
+          );
+          if (hasTournamentEvents) return groupId;
+        } catch {
+          continue;
+        }
+      }
+    }
+    return null;
+  }
+
+  const [mens, womens] = await Promise.all([probeGender("MENS"), probeGender("WOMENS")]);
+  return { mens, womens };
+}
 
 /**
  * Bracket position matchups within a region, ordered top to bottom.
@@ -117,7 +172,7 @@ export async function discoverTournamentId(
   gender: keyof typeof ESPN_PATHS
 ): Promise<string | null> {
   const path = ESPN_PATHS[gender];
-  const groupId = ESPN_TOURNAMENT_GROUP_IDS[gender];
+  const groupId = getGroupId(null, gender);
   const year = new Date().getFullYear();
 
   // Try the most likely dates in order: First Four then Round of 64 window
@@ -717,18 +772,19 @@ export async function importResults(
   gender: keyof typeof ESPN_PATHS
 ): Promise<{ created: number; updated: number }> {
   const path = ESPN_PATHS[gender];
-  const groupId = ESPN_TOURNAMENT_GROUP_IDS[gender];
   const prismaGender = gender === "MENS" ? ("MENS" as const) : ("WOMENS" as const);
 
   // Determine the date range to query
   const season = await db.tournamentSeason.findUnique({
     where: { id: seasonId },
-    select: { firstFourLockAt: true },
+    select: { firstFourLockAt: true, mensEspnGroupId: true, womensEspnGroupId: true },
   });
   if (!season) {
     console.warn(`[import] importResults: season ${seasonId} not found`);
     return { created: 0, updated: 0 };
   }
+
+  const groupId = getGroupId(season, gender);
 
   // Gather all dates from First Four start through today
   const dates = buildDateRange(season.firstFourLockAt, new Date());

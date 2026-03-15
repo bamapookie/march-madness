@@ -186,7 +186,7 @@ prisma.config.ts          # Prisma v7 datasource + migrations config
 | **0.4.0** | ESPN Import & Season Setup — API client, cron job, admin | ✅ Complete    |
 | **0.5.0** | Competitions — group play, invites, lobby, dashboard     | ✅ Complete    |
 | **0.6.0** | Bracket Viewer & Leaderboard                             | ✅ Complete    |
-| **0.7.0** | Notifications & Polish                                   | 🔲 Not started |
+| **0.7.0** | Notifications & Polish                                   | ✅ Complete    |
 | **1.0.0** | Production Launch                                        | 🔲 Not started |
 
 ---

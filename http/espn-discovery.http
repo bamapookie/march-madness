@@ -22,6 +22,13 @@ Accept: application/json
 
 ###
 
+### Discovery — Men's Scoreboard, March 18
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?limit=100&dates=20260318
+Accept: application/json
+
+###
+
 ### Discovery — Men's Scoreboard, March 19 (First Four)
 
 GET https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard?groups=50&limit=100&dates=20260319
@@ -46,5 +53,12 @@ Accept: application/json
 ### Discovery — Women's Scoreboard, March 20 (Round of 64)
 
 GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?groups=49&limit=100&dates=20260320
+Accept: application/json
+
+###
+
+### Discovery — Women's Scoreboard, March 20 (Round of 64)
+
+GET https://site.api.espn.com/apis/site/v2/sports/basketball/womens-college-basketball/scoreboard?limit=100&dates=20260320
 Accept: application/json
 
