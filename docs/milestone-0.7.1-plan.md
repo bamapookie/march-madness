@@ -109,7 +109,29 @@ tooltip or inline note: _"First Four points are not awarded in Before Round of 6
 
 ---
 
-## Further Considerations
+## Fix 8 — Show Admin link in nav for admin users
+
+**Problem:** There is no link to `/admin` in the navigation. Admins must type the URL directly to reach the admin panel,
+which is easy to forget and error-prone.
+
+**Fix:** The nav is already a server component and can call `isAdmin` from `@/lib/admin`. Compute the flag once and pass
+it where needed:
+
+- **`src/components/nav.tsx`** — call `isAdmin(session.user.email)` after resolving the session. In the desktop nav
+  links `<div>`, render a conditionally visible **Admin** link to `/admin` after the Competitions link, styled
+  distinctly (e.g., a small badge outline) so it is clearly a privileged item.
+- **`src/components/mobile-nav-drawer.tsx`** — add an `isAdmin: boolean` prop. Render the Admin link in the mobile
+  drawer menu below the Competitions link, only when `isAdmin` is true.
+
+The Admin link should only be rendered when `isAdmin` returns `true`; no changes to the underlying access-control logic
+are needed.
+
+**Files:**
+
+- `src/components/nav.tsx`
+- `src/components/mobile-nav-drawer.tsx`
+
+---
 
 1. **IDE TypeScript errors on `mensEspnGroupId`** — The JetBrains IDE reports TS2353 errors on the new
    `mensEspnGroupId`/`womensEspnGroupId` Prisma select fields, but `tsc --noEmit` passes cleanly. This is a stale IDE
