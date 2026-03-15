@@ -17,21 +17,15 @@ action that writes directly to `competitionMember` without going through the API
 
 ---
 
-## Fix 2 — React controlled-input warning on always-active Correct Winner checkbox
+## Fix 2 — Remove unnecessary checkbox from always-active Correct Winner row
 
-**Problem:** The always-active Correct Winner checkbox in the competition create form renders:
+**Problem:** The always-active Correct Winner row in the Scoring Options section renders a disabled, checked checkbox
+next to the label. Since Correct Winner can never be toggled off, the checkbox communicates nothing useful and adds
+visual noise. It also produces a React controlled-input console warning (`checked` without `onChange`) and uses
+`readOnly`, which is not valid HTML for checkboxes.
 
-```tsx
-<input type="checkbox" checked disabled readOnly ... />
-```
-
-`readOnly` is a text-input attribute; it is not valid HTML for checkboxes. React also emits a controlled-input console
-warning because `checked` is set without an `onChange` handler (even on a `disabled` element). Two separate issues:
-
-- `readOnly` should be removed (no effect on checkboxes, HTML invalid).
-- `checked` needs an accompanying `onChange={() => {}}` to silence the React warning.
-
-**Fix:** Remove `readOnly`; add `onChange={() => {}}`.
+**Fix:** Remove the `<input type="checkbox">` element entirely from the Correct Winner row. Keep the label text and the
+"(always active)" note so the intent remains clear — just without the misleading disabled control.
 
 **File:** `src/components/competition/create-competition-form.tsx`.
 
