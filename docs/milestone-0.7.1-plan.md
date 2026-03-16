@@ -133,6 +133,53 @@ are needed.
 
 ---
 
+## Fix 9 — Join Cutoff placement, constraint, and time-difference display
+
+**Problem:** The Join Cutoff datetime picker currently lives in the **Basic** section, above the Lock Mode selector in
+the **Rules** section. This ordering is misleading — the valid range of the cutoff depends on which lock mode is
+selected, so the cutoff should come after the user has made that choice. Additionally, the picker has no `max`
+constraint, so an organizer can accidentally enter a cutoff that falls after the lock time (which the API will reject),
+and there is no visual indication of how much lead time they are leaving between the cutoff and the lock.
+
+**Fix:**
+
+1. **Move the cutoff field.** Remove the Join Cutoff `<div>` from Section 1 (Basic) and re-add it inside Section 2
+   (Rules), immediately below the Lock Mode radio group and above the Reseed Mode group. This makes the dependency
+   between the two controls obvious.
+
+2. **Pass season lock timestamps as props.** The `CreateCompetitionPage` server component should query the active
+   `TournamentSeason` for `first_four_lock_at` and `round_of_64_lock_at`, then pass both as optional props to
+   `CreateCompetitionForm` (typed as `Date | null`). When no active season exists, both props are `null` and no
+   constraint is applied.
+
+3. **Derive and enforce the `max` attribute.** Inside the client component, compute the effective lock time from the
+   props based on `settings.lock_mode`:
+   - `lock_mode === "before_first_four"` → `firstFourLockAt`
+   - `lock_mode === "before_round_of_64"` → `roundOf64LockAt`
+
+   Convert to the `datetime-local` format (`YYYY-MM-DDTHH:mm`) and set it as the `max` attribute on the `datetime-local`
+   input. This prevents the browser date picker from offering times after the lock.
+
+   When the organizer switches lock modes, check whether the current `joinCutoffAt` value exceeds the new effective lock
+   time. If it does, clear `joinCutoffAt` to avoid a silently invalid state.
+
+4. **Show the time difference.** Directly below the datetime input, display a contextual hint line:
+   - If `joinCutoffAt` is empty and an effective lock time is known, show the lock time as a formatted reference: _"Lock
+     closes at \<date/time\>."_
+   - If `joinCutoffAt` is set and a valid effective lock time is known, compute the difference and display it as a
+     human-readable string, e.g., _"Cutoff is 2 days, 4 hours before the lock."_ Use a helper that formats the
+     difference in the largest two non-zero units (days / hours / minutes), falling back to _"less than a minute"_ for
+     very small gaps. If the difference is negative (cutoff is after lock), show an error-styled message: _"Cutoff must
+     be before the lock time."_ — and prevent form submission while this is the case.
+
+**Files:**
+
+- `src/app/competition/create/page.tsx` — query active season, pass `firstFourLockAt` / `roundOf64LockAt` props.
+- `src/components/competition/create-competition-form.tsx` — accept props; move cutoff field; add `max` /
+  clear-on-mode-change logic; render time-difference hint.
+
+---
+
 1. **IDE TypeScript errors on `mensEspnGroupId`** — The JetBrains IDE reports TS2353 errors on the new
    `mensEspnGroupId`/`womensEspnGroupId` Prisma select fields, but `tsc --noEmit` passes cleanly. This is a stale IDE
    Prisma plugin cache. No code change needed; restarting the IDE or invalidating the JetBrains TypeScript service cache
