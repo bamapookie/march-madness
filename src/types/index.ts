@@ -421,6 +421,17 @@ export type EntryDetailResponse = {
   inProgressSlotIds: string[];
 };
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export type NotificationSummary = {
+  id: string;
+  title: string;
+  body: string;
+  isRead: boolean;
+  link: string | null;
+  createdAt: string; // ISO-8601
+};
+
 /** Response shape for GET /api/ranking-lists/[id]/bracket */
 export type BracketViewerResponse = {
   resolvedBracket: ResolvedBracketData;

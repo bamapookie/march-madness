@@ -15,7 +15,8 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ data: null, error: "Invalid request body" }, { status: 400 });
   }
 
-  const { mensEspnTournamentId, womensEspnTournamentId } = body as Record<string, unknown>;
+  const { mensEspnTournamentId, womensEspnTournamentId, mensEspnGroupId, womensEspnGroupId } =
+    body as Record<string, unknown>;
 
   const season = await db.tournamentSeason.findFirst({
     where: { isActive: true },
@@ -38,15 +39,22 @@ export async function PATCH(req: NextRequest) {
       ...(typeof womensEspnTournamentId === "string" || womensEspnTournamentId === null
         ? { womensEspnTournamentId: womensEspnTournamentId ?? null }
         : {}),
+      ...(typeof mensEspnGroupId === "string" || mensEspnGroupId === null
+        ? { mensEspnGroupId: (mensEspnGroupId as string | null) ?? null }
+        : {}),
+      ...(typeof womensEspnGroupId === "string" || womensEspnGroupId === null
+        ? { womensEspnGroupId: (womensEspnGroupId as string | null) ?? null }
+        : {}),
     },
     select: {
       id: true,
       name: true,
       mensEspnTournamentId: true,
       womensEspnTournamentId: true,
+      mensEspnGroupId: true,
+      womensEspnGroupId: true,
     },
   });
 
   return NextResponse.json({ data: updated, error: null });
 }
-

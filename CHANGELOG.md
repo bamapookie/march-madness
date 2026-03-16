@@ -11,7 +11,52 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
-## [0.6.0] — 2026-03-14
+## [0.7.0] — 2026-03-15
+
+### Notifications & Polish
+
+- **In-app notifications** — `Notification` model wired end-to-end:
+  - `src/lib/notifications.ts` — `createNotification` helper and `notifyScoresUpdated` (deduped per user per run)
+  - `GET /api/notifications` — paginated list (20 newest); `PATCH` marks all read
+  - `PATCH /api/notifications/[id]` marks one read; `DELETE` removes it
+  - `src/components/nav-notifications.tsx` — bell icon with unread badge, dropdown list, mark-all-read; polls every 30 s
+    (60 s when tab hidden)
+  - Wired into `recomputeAllScores` (score-update notification) and `POST /api/competitions/join` (join confirmation)
+
+- **Mobile-responsive layout**:
+  - `src/components/nav.tsx` — desktop nav links hidden on `sm`; hamburger toggle via `MobileNavDrawer` client island
+  - `src/components/mobile-nav-drawer.tsx` — drop-down panel with scroll lock; no third-party dependency
+  - Notification bell always visible in top bar
+  - Leaderboard table columns hidden on small screens (`Men's`, `Women's` hidden below `sm`; `Tiebreaker`, `Max Left`
+    hidden below `md`)
+
+- **Loading skeletons** — `loading.tsx` added to 9 route segments (dashboard, ranking, ranking/[id], competition,
+  competition/[id], leaderboard, entries/[entryId], bracket/[id], admin); shared `src/components/ui/skeleton.tsx` helper
+
+- **Error boundaries** — `error.tsx` added to the same 9 segments; shared `src/components/ui/error-boundary-content.tsx`
+  with "Try again" + "← Go back"
+
+- **Competition setup form overhaul**:
+  - **Correct Winner always active** — removed its checkbox; guarded invariant in `validateCompetitionSettings` and
+    default settings
+  - **Seeding Accuracy Bonus** — replaced toggle switch with `<input type="checkbox">` for consistency with Round
+    Advancement
+  - **Unified points table** — merged three separate tables into one with Round, Correct Winner, Round Adv., and Seeding
+    Bonus columns; disabled cells for inapplicable row/column pairs; `championship_runner_up` → "Championship
+    (Runner-up)"; `championship_winner` → "Championship (Winner)"
+
+- **Organizer delete competition** — `DELETE /api/competitions/[id]` (blocked when entries exist); "Delete Competition"
+  link in organizer settings panel
+
+- **Admin panel hardening**:
+  - `GET /api/admin/db-status` — pings DB, returns latency; `src/components/admin/db-status-chip.tsx` shows live status
+    chip
+  - Last-successful-import timestamp promoted to heading subtitle
+  - ESPN Configuration section consolidates tournament IDs and scoreboard group IDs into a single 2×2 grid
+  - **ESPN group ID discovery** — `mensEspnGroupId` / `womensEspnGroupId` added to `TournamentSeason` (migration
+    `20260315192834_add_espn_group_ids`); `discoverEspnGroupIds` in `import.ts` probes candidate IDs;
+    `POST /api/admin/discover-group-ids` previews result; `getGroupId` helper falls back to hardcoded defaults (`"50"` /
+    `"49"`) when season fields are null
 
 ### Bracket Viewer & Leaderboard
 

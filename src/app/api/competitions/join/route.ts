@@ -1,6 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { isJoinable } from "@/lib/competition";
+import { createNotification } from "@/lib/notifications";
 import type { ApiResponse } from "@/types";
 
 // ─── POST /api/competitions/join ──────────────────────────────────────────────
@@ -72,6 +73,14 @@ export async function POST(request: Request): Promise<Response> {
   await db.competitionMember.create({
     data: { competitionId: comp.id, userId: session.user.id },
   });
+
+  // Notify the joining user
+  await createNotification(
+    session.user.id,
+    "Joined competition",
+    `You joined "${comp.name}".`,
+    `/competition/${comp.id}`
+  );
 
   return Response.json(
     { data: { competitionId: comp.id, alreadyMember: false }, error: null } satisfies ApiResponse<{

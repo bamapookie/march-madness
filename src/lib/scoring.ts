@@ -333,6 +333,7 @@ function computeMaxPotentialGender(
 export async function recomputeAllScores(seasonId: string): Promise<void> {
   const { db } = await import("@/lib/db");
   const { resolveInitialBracket, applyActualResults } = await import("@/lib/bracket");
+  const { notifyScoresUpdated } = await import("@/lib/notifications");
 
   const season = await db.tournamentSeason.findUnique({
     where: { id: seasonId },
@@ -539,4 +540,7 @@ export async function recomputeAllScores(seasonId: string): Promise<void> {
       }
     }
   }
+
+  // Notify users that scores have been updated (deduped per user)
+  await notifyScoresUpdated(seasonId);
 }

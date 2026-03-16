@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Copy, Check, RefreshCw } from "lucide-react";
+import { Copy, Check, RefreshCw, Trash2 } from "lucide-react";
 import type { CompetitionDetail, ApiResponse, CompetitionSummary } from "@/types";
 
 interface Props {
@@ -18,6 +18,7 @@ export function LobbyOrganizerSettings({ competition: c }: Props) {
   const [joinCode, setJoinCode] = useState(c.joinCode);
   const [saving, setSaving] = useState(false);
   const [rotating, setRotating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSave() {
@@ -63,6 +64,25 @@ export function LobbyOrganizerSettings({ competition: c }: Props) {
       setError("Network error — please try again.");
     } finally {
       setRotating(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!window.confirm("Permanently delete this competition? This cannot be undone.")) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/competitions/${c.id}`, { method: "DELETE" });
+      if (res.status === 204) {
+        router.push("/competition");
+        return;
+      }
+      const json = (await res.json()) as ApiResponse<unknown>;
+      setError(json.error ?? "Failed to delete.");
+    } catch {
+      setError("Network error — please try again.");
+    } finally {
+      setDeleting(false);
     }
   }
 
@@ -130,6 +150,21 @@ export function LobbyOrganizerSettings({ competition: c }: Props) {
         >
           {saving ? "Saving…" : "Save Settings"}
         </button>
+
+        {/* Delete competition — only if no entries submitted */}
+        {c.entryCount === 0 && (
+          <div className="border-t border-zinc-200 pt-3 dark:border-zinc-700">
+            <button
+              type="button"
+              onClick={() => void handleDelete()}
+              disabled={deleting}
+              className="inline-flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 disabled:opacity-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {deleting ? "Deleting…" : "Delete Competition"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -75,7 +75,7 @@ Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round o
 - Leaderboard with combined score, tiebreaker, and per-gender breakdown
 - Competition entry detail — user's bracket vs. actual results
 
-### 0.7.0 — Notifications & Polish
+### 0.7.0 — Notifications & Polish ✅ _complete_
 
 - In-app notifications — polled client-side, displayed in nav
 - Mobile-responsive layout pass

@@ -146,7 +146,58 @@ export async function GET(
   return Response.json({ data: detail, error: null } satisfies ApiResponse<CompetitionDetail>);
 }
 
-// ─── PATCH /api/competitions/[id] ─────────────────────────────────────────────
+// ─── DELETE /api/competitions/[id] ───────────────────────────────────────────
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ id: string }> }
+): Promise<Response> {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return Response.json({ data: null, error: "Unauthorized" } satisfies ApiResponse<null>, {
+      status: 401,
+    });
+  }
+
+  const { id } = await params;
+  const userId = session.user.id;
+
+  const comp = await db.competition.findUnique({
+    where: { id },
+    select: { organizerId: true, _count: { select: { entries: true } } },
+  });
+
+  if (!comp) {
+    return Response.json(
+      { data: null, error: "Competition not found" } satisfies ApiResponse<null>,
+      { status: 404 }
+    );
+  }
+
+  if (comp.organizerId !== userId) {
+    return Response.json(
+      {
+        data: null,
+        error: "Forbidden — only the organizer can delete this competition",
+      } satisfies ApiResponse<null>,
+      { status: 403 }
+    );
+  }
+
+  if (comp._count.entries > 0) {
+    return Response.json(
+      {
+        data: null,
+        error: "Cannot delete a competition with submitted entries.",
+      } satisfies ApiResponse<null>,
+      { status: 400 }
+    );
+  }
+
+  await db.competition.delete({ where: { id } });
+
+  return new Response(null, { status: 204 });
+}
 
 export async function PATCH(
   req: Request,

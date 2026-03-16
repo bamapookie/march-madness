@@ -235,14 +235,17 @@ export default async function LeaderboardPage({ params }: Props) {
                 <th className="px-3 py-3">#</th>
                 <th className="px-3 py-3">Participant</th>
                 <th className="px-3 py-3">Entry</th>
-                <th className="px-3 py-3 text-right">Men&apos;s</th>
-                <th className="px-3 py-3 text-right">Women&apos;s</th>
+                <th className="hidden px-3 py-3 text-right sm:table-cell">Men&apos;s</th>
+                <th className="hidden px-3 py-3 text-right sm:table-cell">Women&apos;s</th>
                 <th className="px-3 py-3 text-right font-semibold">Total</th>
-                <th className="px-3 py-3 text-right" title="Maximum points still earnable">
+                <th
+                  className="hidden px-3 py-3 text-right md:table-cell"
+                  title="Maximum points still earnable"
+                >
                   Max Left
                 </th>
                 <th
-                  className="px-3 py-3 text-right"
+                  className="hidden px-3 py-3 text-right md:table-cell"
                   title="Absolute difference between Men's and Women's scores. Lower is better."
                 >
                   Tiebreaker ↑
@@ -292,19 +295,19 @@ export default async function LeaderboardPage({ params }: Props) {
                       {row.rankingListName}
                     </Link>
                   </td>
-                  <td className="px-3 py-3 text-right text-zinc-700 tabular-nums dark:text-zinc-300">
+                  <td className="hidden px-3 py-3 text-right text-zinc-700 tabular-nums sm:table-cell dark:text-zinc-300">
                     {fmt(row.computedAt ? row.mensScore : null)}
                   </td>
-                  <td className="px-3 py-3 text-right text-zinc-700 tabular-nums dark:text-zinc-300">
+                  <td className="hidden px-3 py-3 text-right text-zinc-700 tabular-nums sm:table-cell dark:text-zinc-300">
                     {fmt(row.computedAt ? row.womensScore : null)}
                   </td>
                   <td className="px-3 py-3 text-right font-semibold text-zinc-900 tabular-nums dark:text-zinc-50">
                     {fmt(row.computedAt ? row.totalScore : null)}
                   </td>
-                  <td className="px-3 py-3 text-right text-zinc-500 tabular-nums dark:text-zinc-400">
+                  <td className="hidden px-3 py-3 text-right text-zinc-500 tabular-nums md:table-cell dark:text-zinc-400">
                     {fmt(row.maxPotentialRemaining)}
                   </td>
-                  <td className="px-3 py-3 text-right text-zinc-500 tabular-nums dark:text-zinc-400">
+                  <td className="hidden px-3 py-3 text-right text-zinc-500 tabular-nums md:table-cell dark:text-zinc-400">
                     {fmt(row.computedAt ? row.tiebreaker : null)}
                   </td>
                 </tr>

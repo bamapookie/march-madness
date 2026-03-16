@@ -22,6 +22,8 @@ export default async function AdminPage() {
       isActive: true,
       mensEspnTournamentId: true,
       womensEspnTournamentId: true,
+      mensEspnGroupId: true,
+      womensEspnGroupId: true,
       firstFourLockAt: true,
       roundOf64LockAt: true,
       _count: {
@@ -64,10 +66,7 @@ export default async function AdminPage() {
       const age = now.getTime() - lastSuccessImport.completedAt.getTime();
       const tournamentEnd = new Date(season.roundOf64LockAt);
       tournamentEnd.setDate(tournamentEnd.getDate() + 21);
-      isStale =
-        age > STALE_THRESHOLD_MS &&
-        now >= season.firstFourLockAt &&
-        now <= tournamentEnd;
+      isStale = age > STALE_THRESHOLD_MS && now >= season.firstFourLockAt && now <= tournamentEnd;
     }
   }
 
@@ -85,6 +84,8 @@ export default async function AdminPage() {
         isActive: season.isActive,
         mensEspnTournamentId: season.mensEspnTournamentId,
         womensEspnTournamentId: season.womensEspnTournamentId,
+        mensEspnGroupId: season.mensEspnGroupId,
+        womensEspnGroupId: season.womensEspnGroupId,
         firstFourLockAt: season.firstFourLockAt.toISOString(),
         roundOf64LockAt: season.roundOf64LockAt.toISOString(),
       }

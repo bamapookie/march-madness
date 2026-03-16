@@ -11,47 +11,25 @@ import type {
 } from "@/types";
 import { getDefaultCompetitionSettings } from "@/lib/competition";
 
-const ROUND_KEYS: Array<keyof RoundPointMap> = [
-  "first_four",
-  "round_of_64",
-  "round_of_32",
-  "sweet_16",
-  "elite_8",
-  "final_four",
-  "championship",
-];
+// ─── Row definitions for the unified points table ────────────────────────────
 
-const ROUND_LABELS: Record<keyof RoundPointMap, string> = {
-  first_four: "First Four",
-  round_of_64: "Round of 64",
-  round_of_32: "Round of 32",
-  sweet_16: "Sweet 16",
-  elite_8: "Elite 8",
-  final_four: "Final Four",
-  championship: "Championship",
+type PointsRow = {
+  label: string;
+  roundKey: keyof RoundPointMap | null; // null = no cell for RA/CW columns
+  bonusKey: keyof SeedingBonusPointMap | null; // null = no cell for seeding column
 };
 
-const BONUS_KEYS: Array<keyof SeedingBonusPointMap> = [
-  "first_four",
-  "round_of_64",
-  "round_of_32",
-  "sweet_16",
-  "elite_8",
-  "final_four",
-  "championship_runner_up",
-  "championship_winner",
+const POINTS_ROWS: PointsRow[] = [
+  { label: "First Four", roundKey: "first_four", bonusKey: "first_four" },
+  { label: "Round of 64", roundKey: "round_of_64", bonusKey: "round_of_64" },
+  { label: "Round of 32", roundKey: "round_of_32", bonusKey: "round_of_32" },
+  { label: "Sweet 16", roundKey: "sweet_16", bonusKey: "sweet_16" },
+  { label: "Elite 8", roundKey: "elite_8", bonusKey: "elite_8" },
+  { label: "Final Four", roundKey: "final_four", bonusKey: "final_four" },
+  { label: "Championship", roundKey: "championship", bonusKey: null },
+  { label: "Championship (Runner-up)", roundKey: null, bonusKey: "championship_runner_up" },
+  { label: "Championship (Winner)", roundKey: null, bonusKey: "championship_winner" },
 ];
-
-const BONUS_LABELS: Record<keyof SeedingBonusPointMap, string> = {
-  first_four: "First Four",
-  round_of_64: "Round of 64",
-  round_of_32: "Round of 32",
-  sweet_16: "Sweet 16",
-  elite_8: "Elite 8",
-  final_four: "Final Four",
-  championship_runner_up: "Runner-up",
-  championship_winner: "Champion",
-};
 
 export function CreateCompetitionForm() {
   const router = useRouter();
@@ -90,11 +68,16 @@ export function CreateCompetitionForm() {
     }));
   }
 
-  function toggleScoringMode(mode: "round_advancement" | "correct_winner") {
+  function toggleRoundAdvancement(enabled: boolean) {
     setSettings((prev) => {
-      const current = prev.scoring_mode;
-      const next = current.includes(mode) ? current.filter((m) => m !== mode) : [...current, mode];
-      return { ...prev, scoring_mode: next };
+      const next = enabled
+        ? [...new Set([...prev.scoring_mode, "round_advancement" as const])]
+        : prev.scoring_mode.filter((m) => m !== "round_advancement");
+      // always keep correct_winner
+      return {
+        ...prev,
+        scoring_mode: next.includes("correct_winner") ? next : ["correct_winner", ...next],
+      };
     });
   }
 
@@ -133,6 +116,8 @@ export function CreateCompetitionForm() {
       setSubmitting(false);
     }
   }
+
+  const roundAdvancementEnabled = settings.scoring_mode.includes("round_advancement");
 
   return (
     <form onSubmit={(e) => void handleSubmit(e)} className="space-y-8">
@@ -297,176 +282,152 @@ export function CreateCompetitionForm() {
           />
         </div>
 
+        {/* Scoring toggles */}
         <div>
-          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Scoring Mode</p>
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Scoring Options</p>
           <div className="mt-2 space-y-2">
-            {(["correct_winner", "round_advancement"] as const).map((mode) => (
-              <label key={mode} className="flex cursor-pointer items-start gap-3">
-                <input
-                  type="checkbox"
-                  checked={settings.scoring_mode.includes(mode)}
-                  onChange={() => toggleScoringMode(mode)}
-                  className="mt-0.5"
-                />
-                <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                  {mode === "correct_winner" ? (
-                    <>
-                      <strong>Correct Winner</strong> — points for each correctly predicted game
-                      winner
-                    </>
-                  ) : (
-                    <>
-                      <strong>Round Advancement</strong> — points for each round a team advances,
-                      capped at their predicted exit (meaningful only with reseed mode)
-                    </>
-                  )}
-                </span>
-              </label>
-            ))}
-          </div>
-        </div>
+            {/* Correct Winner — always enabled, no checkbox */}
+            <div className="flex items-start gap-3">
+              <input type="checkbox" checked disabled readOnly className="mt-0.5 opacity-60" />
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                <strong>Correct Winner</strong> — points for each correctly predicted game winner
+                (always active)
+              </span>
+            </div>
 
-        <div className="flex items-center justify-between rounded-md border border-zinc-200 px-4 py-3 dark:border-zinc-800">
-          <div>
-            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Seeding Accuracy Bonus
-            </p>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Bonus points when a team exits in the exact round predicted
-            </p>
+            {/* Round Advancement — optional checkbox */}
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={roundAdvancementEnabled}
+                onChange={(e) => toggleRoundAdvancement(e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                <strong>Round Advancement</strong> — points for each round a team advances, capped
+                at their predicted exit (meaningful only with reseed mode)
+              </span>
+            </label>
+
+            {/* Seeding Accuracy Bonus — optional checkbox */}
+            <label className="flex cursor-pointer items-start gap-3">
+              <input
+                type="checkbox"
+                checked={settings.seeding_bonus_enabled}
+                onChange={(e) => updateSettings("seeding_bonus_enabled", e.target.checked)}
+                className="mt-0.5"
+              />
+              <span className="text-sm text-zinc-700 dark:text-zinc-300">
+                <strong>Seeding Accuracy Bonus</strong> — bonus points when a team exits in the
+                exact round predicted
+              </span>
+            </label>
           </div>
-          <button
-            type="button"
-            onClick={() => updateSettings("seeding_bonus_enabled", !settings.seeding_bonus_enabled)}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-              settings.seeding_bonus_enabled
-                ? "bg-zinc-900 dark:bg-zinc-50"
-                : "bg-zinc-300 dark:bg-zinc-700"
-            }`}
-          >
-            <span
-              className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform dark:bg-zinc-900 ${
-                settings.seeding_bonus_enabled ? "translate-x-6" : "translate-x-1"
-              }`}
-            />
-          </button>
         </div>
       </section>
 
       <hr className="border-zinc-200 dark:border-zinc-800" />
 
-      {/* ── Section 3: Points ── */}
-      <section className="space-y-6">
+      {/* ── Section 3: Points (unified table) ── */}
+      <section className="space-y-4">
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Points</h2>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[420px] text-sm">
+            <thead>
+              <tr className="border-b border-zinc-200 dark:border-zinc-800">
+                <th className="pb-2 text-left text-xs font-medium text-zinc-500">Round</th>
+                <th className="pr-2 pb-2 text-right text-xs font-medium text-zinc-500">
+                  Correct Winner
+                </th>
+                <th
+                  className={`pr-2 pb-2 text-right text-xs font-medium transition-opacity ${
+                    roundAdvancementEnabled ? "text-zinc-500" : "text-zinc-300 dark:text-zinc-700"
+                  }`}
+                >
+                  Round Adv.
+                </th>
+                <th
+                  className={`pb-2 text-right text-xs font-medium transition-opacity ${
+                    settings.seeding_bonus_enabled
+                      ? "text-zinc-500"
+                      : "text-zinc-300 dark:text-zinc-700"
+                  }`}
+                >
+                  Seeding Bonus
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {POINTS_ROWS.map((row) => (
+                <tr key={row.label} className="border-b border-zinc-100 dark:border-zinc-900">
+                  <td className="py-1.5 text-zinc-700 dark:text-zinc-300">{row.label}</td>
 
-        <div className="grid gap-6 sm:grid-cols-2">
-          {/* Round Advancement */}
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Round Advancement
-            </h3>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="pb-1 text-left text-xs text-zinc-500">Round</th>
-                  <th className="pb-1 text-right text-xs text-zinc-500">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ROUND_KEYS.map((key) => (
-                  <tr key={key} className="border-b border-zinc-100 dark:border-zinc-900">
-                    <td className="py-1 text-zinc-700 dark:text-zinc-300">{ROUND_LABELS[key]}</td>
-                    <td className="py-1 text-right">
+                  {/* Correct Winner */}
+                  <td className="py-1.5 pr-2 text-right">
+                    {row.roundKey ? (
                       <input
                         type="number"
                         min={0}
-                        value={settings.round_points[key]}
-                        onChange={(e) =>
-                          updateRoundPoints(key, Math.max(0, parseInt(e.target.value, 10) || 0))
-                        }
-                        className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                      />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Correct Winner */}
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Correct Winner
-            </h3>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="pb-1 text-left text-xs text-zinc-500">Round</th>
-                  <th className="pb-1 text-right text-xs text-zinc-500">Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ROUND_KEYS.map((key) => (
-                  <tr key={key} className="border-b border-zinc-100 dark:border-zinc-900">
-                    <td className="py-1 text-zinc-700 dark:text-zinc-300">{ROUND_LABELS[key]}</td>
-                    <td className="py-1 text-right">
-                      <input
-                        type="number"
-                        min={0}
-                        value={settings.correct_winner_points[key]}
+                        value={settings.correct_winner_points[row.roundKey]}
                         onChange={(e) =>
                           updateCorrectWinnerPoints(
-                            key,
+                            row.roundKey!,
                             Math.max(0, parseInt(e.target.value, 10) || 0)
                           )
                         }
                         className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                       />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                    ) : (
+                      <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                    )}
+                  </td>
 
-        {/* Seeding Bonus */}
-        {settings.seeding_bonus_enabled && (
-          <div>
-            <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Seeding Accuracy Bonus
-            </h3>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-zinc-200 dark:border-zinc-800">
-                  <th className="pb-1 text-left text-xs text-zinc-500">Exit Round</th>
-                  <th className="pb-1 text-right text-xs text-zinc-500">Bonus Pts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {BONUS_KEYS.map((key) => (
-                  <tr key={key} className="border-b border-zinc-100 dark:border-zinc-900">
-                    <td className="py-1 text-zinc-700 dark:text-zinc-300">{BONUS_LABELS[key]}</td>
-                    <td className="py-1 text-right">
+                  {/* Round Advancement */}
+                  <td className="py-1.5 pr-2 text-right">
+                    {row.roundKey ? (
                       <input
                         type="number"
                         min={0}
-                        value={settings.seeding_bonus_points[key]}
+                        disabled={!roundAdvancementEnabled}
+                        value={settings.round_points[row.roundKey]}
                         onChange={(e) =>
-                          updateSeedingBonusPoints(
-                            key,
+                          updateRoundPoints(
+                            row.roundKey!,
                             Math.max(0, parseInt(e.target.value, 10) || 0)
                           )
                         }
-                        className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                        className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                       />
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                    ) : (
+                      <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                    )}
+                  </td>
+
+                  {/* Seeding Bonus */}
+                  <td className="py-1.5 text-right">
+                    {row.bonusKey ? (
+                      <input
+                        type="number"
+                        min={0}
+                        disabled={!settings.seeding_bonus_enabled}
+                        value={settings.seeding_bonus_points[row.bonusKey]}
+                        onChange={(e) =>
+                          updateSeedingBonusPoints(
+                            row.bonusKey!,
+                            Math.max(0, parseInt(e.target.value, 10) || 0)
+                          )
+                        }
+                        className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                      />
+                    ) : (
+                      <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <div className="pt-2">

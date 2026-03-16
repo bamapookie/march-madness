@@ -113,6 +113,8 @@ model TournamentSeason {
   isActive               Boolean  @default(false)
   mensEspnTournamentId   String? // ESPN tournament ID for Men's bracket; set by admin or auto-discovered
   womensEspnTournamentId String? // ESPN tournament ID for Women's bracket; set by admin or auto-discovered
+  mensEspnGroupId        String? // ESPN scoreboard ?groups= value for Men's NCAA Tournament; defaults to "50"
+  womensEspnGroupId      String? // ESPN scoreboard ?groups= value for Women's NCAA Tournament; defaults to "49"
 
   schools           School[]
   bracketSlots      BracketSlot[]

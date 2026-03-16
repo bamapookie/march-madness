@@ -106,6 +106,10 @@ export function validateCompetitionSettings(
       };
     }
   }
+  // correct_winner is always required
+  if (!(s.scoring_mode as string[]).includes("correct_winner")) {
+    return { valid: false, error: "scoring_mode must include 'correct_winner'" };
+  }
 
   if (typeof s.seeding_bonus_enabled !== "boolean") {
     return { valid: false, error: "seeding_bonus_enabled must be a boolean" };
