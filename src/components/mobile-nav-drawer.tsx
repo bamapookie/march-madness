@@ -9,9 +9,10 @@ interface Props {
   signOutAction: () => Promise<void>;
   userName: string | null;
   userImage: string | null;
+  isAdmin?: boolean;
 }
 
-export function MobileNavDrawer({ signOutAction, userName, userImage }: Props) {
+export function MobileNavDrawer({ signOutAction, userName, userImage, isAdmin = false }: Props) {
   const [open, setOpen] = useState(false);
 
   // Lock body scroll when drawer is open
@@ -75,6 +76,15 @@ export function MobileNavDrawer({ signOutAction, userName, userImage }: Props) {
           >
             Competitions
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="rounded-md px-3 py-2.5 text-sm font-medium text-amber-600 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30"
+            >
+              Admin
+            </Link>
+          )}
 
           <div className="my-1 border-t border-zinc-200 dark:border-zinc-800" />
 

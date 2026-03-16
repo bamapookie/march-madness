@@ -20,29 +20,46 @@ export async function createNotification(
 }
 
 /**
- * Notifies every unique user who has at least one scored entry in the given season
- * that their scores have been updated. Deduplicates by userId so each user gets at
- * most one notification per recomputeAllScores run, regardless of how many entries
- * they have or how many competitions they are in.
+ * Notifies every unique user who has at least one scored entry (totalScore > 0)
+ * in the given season that their scores have been updated. Fires one notification
+ * per user per competition, linking directly to that competition's leaderboard.
+ * Skips silently when no real game scores exist yet (all entries still at 0).
  */
 export async function notifyScoresUpdated(seasonId: string): Promise<void> {
   try {
-    // Collect distinct user IDs with scored entries in this season
+    // Collect entries with non-zero scores so pre-tournament cron ticks are silent
     const entries = await db.competitionEntry.findMany({
-      where: { competition: { seasonId }, score: { isNot: null } },
-      select: { userId: true, competitionId: true },
+      where: {
+        competition: { seasonId },
+        score: { totalScore: { gt: 0 } },
+      },
+      select: {
+        userId: true,
+        competitionId: true,
+      },
     });
 
-    const notified = new Set<string>();
+    if (entries.length === 0) return;
+
+    // Group user IDs by competition (deduplicated)
+    const competitionUsers = new Map<string, Set<string>>();
     for (const e of entries) {
-      if (notified.has(e.userId)) continue;
-      notified.add(e.userId);
-      await createNotification(
-        e.userId,
-        "Scores updated",
-        "New tournament results are in — check your leaderboard position.",
-        `/competition`
-      );
+      if (!competitionUsers.has(e.competitionId)) {
+        competitionUsers.set(e.competitionId, new Set());
+      }
+      competitionUsers.get(e.competitionId)!.add(e.userId);
+    }
+
+    // One notification per user per competition, linking to that competition's leaderboard
+    for (const [competitionId, userIds] of competitionUsers) {
+      for (const userId of userIds) {
+        await createNotification(
+          userId,
+          "Scores updated",
+          "New tournament results are in — check your leaderboard position.",
+          `/competition/${competitionId}/leaderboard`
+        );
+      }
     }
   } catch (err) {
     console.warn("[notifications] notifyScoresUpdated failed:", err);

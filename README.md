@@ -187,6 +187,7 @@ prisma.config.ts          # Prisma v7 datasource + migrations config
 | **0.5.0** | Competitions — group play, invites, lobby, dashboard     | ✅ Complete    |
 | **0.6.0** | Bracket Viewer & Leaderboard                             | ✅ Complete    |
 | **0.7.0** | Notifications & Polish                                   | ✅ Complete    |
+| **0.7.1** | Post-Polish Fixes                                        | ✅ Complete    |
 | **1.0.0** | Production Launch                                        | 🔲 Not started |
 
 ---
