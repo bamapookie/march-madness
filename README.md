@@ -188,6 +188,7 @@ prisma.config.ts          # Prisma v7 datasource + migrations config
 | **0.6.0** | Bracket Viewer & Leaderboard                             | ✅ Complete    |
 | **0.7.0** | Notifications & Polish                                   | ✅ Complete    |
 | **0.7.1** | Post-Polish Fixes                                        | ✅ Complete    |
+| **0.7.2** | Import & Manual Override Fixes                           | 🔲 In progress |
 | **1.0.0** | Production Launch                                        | 🔲 Not started |
 
 ---

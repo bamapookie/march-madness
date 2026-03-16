@@ -95,6 +95,10 @@ Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round o
 - Join Cutoff field moved to Rules section (below Lock Mode); `max` constraint tied to effective lock time; time-diff
   hint displayed; form submission blocked when cutoff exceeds lock
 
+### 0.7.2 — Import & Manual Override Fixes 🔲 _in progress_
+
+- Tasks to be added.
+
 ### 1.0.0 — Production Launch
 
 - Production deployment — Vercel + Railway
