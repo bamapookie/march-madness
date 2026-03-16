@@ -92,7 +92,7 @@ export async function discoverEspnGroupIds(season: {
           );
           if (hasTournamentEvents) return groupId;
         } catch {
-          continue;
+          // probe failed for this group/date combo — try next
         }
       }
     }
@@ -317,7 +317,7 @@ export async function importSchools(
     }
   }
 
-  console.log(`[import] importSchools(${gender}): ${created} created, ${updated} updated`);
+  console.warn(`[import] importSchools(${gender}): ${created} created, ${updated} updated`);
   return { created, updated };
 }
 
@@ -750,7 +750,7 @@ export async function importBracketSlots(
     }
   }
 
-  console.log(`[import] importBracketSlots(${gender}): ${created} created, ${updated} updated`);
+  console.warn(`[import] importBracketSlots(${gender}): ${created} created, ${updated} updated`);
   return { created, updated };
 }
 
@@ -933,7 +933,7 @@ export async function importResults(
     }
   }
 
-  console.log(`[import] importResults(${gender}): ${created} created, ${updated} updated`);
+  console.warn(`[import] importResults(${gender}): ${created} created, ${updated} updated`);
   return { created, updated };
 }
 
@@ -983,28 +983,28 @@ export async function runFullImport(seasonId: string): Promise<ImportResult> {
 
     // Auto-discover if not already set
     if (!mensId) {
-      console.log("[import] Men's tournament ID not set — attempting auto-discovery…");
+      console.warn("[import] Men's tournament ID not set — attempting auto-discovery…");
       mensId = await discoverTournamentId("MENS");
       if (mensId) {
         await db.tournamentSeason.update({
           where: { id: seasonId },
           data: { mensEspnTournamentId: mensId },
         });
-        console.log(`[import] Discovered Men's tournament ID: ${mensId}`);
+        console.warn(`[import] Discovered Men's tournament ID: ${mensId}`);
       } else {
         console.warn("[import] Could not auto-discover Men's tournament ID.");
       }
     }
 
     if (!womensId) {
-      console.log("[import] Women's tournament ID not set — attempting auto-discovery…");
+      console.warn("[import] Women's tournament ID not set — attempting auto-discovery…");
       womensId = await discoverTournamentId("WOMENS");
       if (womensId) {
         await db.tournamentSeason.update({
           where: { id: seasonId },
           data: { womensEspnTournamentId: womensId },
         });
-        console.log(`[import] Discovered Women's tournament ID: ${womensId}`);
+        console.warn(`[import] Discovered Women's tournament ID: ${womensId}`);
       } else {
         console.warn("[import] Could not auto-discover Women's tournament ID.");
       }

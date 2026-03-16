@@ -11,6 +11,45 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ---
 
+## [0.7.1] — 2026-03-15
+
+### Post-Polish Fixes
+
+- **Fix 1 — Join competition notification** — inline join server action on the lobby page now calls `createNotification`
+  after creating the member row, so users receive a join confirmation matching what the API route provides.
+
+- **Fix 2 — Remove misleading Correct Winner checkbox** — the disabled, always-checked checkbox next to the "Correct
+  Winner" label in the competition create form has been removed. The label and "(always active)" note remain.
+
+- **Fix 3 — `console.log` → `console.warn` in `import.ts`** — all seven `console.log` calls in `src/lib/import.ts`
+  changed to `console.warn` to satisfy the project's ESLint `no-console` rule.
+
+- **Fix 4 — Remove unnecessary `continue` in `discoverEspnGroupIds`** — the trailing `continue` at the end of the inner
+  `try/catch` loop body removed; ESLint no longer flags it.
+
+- **Fix 5 — Suppress pre-tournament score notifications** — `notifyScoresUpdated` now skips silently when every
+  `EntryScore` row in the season has `totalScore = 0`, preventing spurious notifications during pre-tournament imports.
+
+- **Fix 6 — Per-competition score notifications with leaderboard links** — `notifyScoresUpdated` restructured to group
+  entries by competition. Each user receives one notification per competition that has at least one scored entry
+  (`totalScore > 0`), linking directly to that competition's leaderboard (`/competition/[id]/leaderboard`).
+
+- **Fix 7 — Grey out First Four points row for "Before Round of 64" lock mode** — when the organizer selects "Before
+  Round of 64" in the competition create form, the First Four row in the unified points table is visually struck-through
+  and all three inputs are disabled, with a tooltip explaining why.
+
+- **Fix 8 — Admin link in navigation** — `src/components/nav.tsx` calls `isAdmin()` from `@/lib/admin` and renders a
+  badged **Admin** link to `/admin` in both the desktop nav and the mobile drawer for admin users only.
+
+- **Fix 9 — Join Cutoff UX improvements** — the Join Cutoff field moved from the Basic section to the Rules section,
+  directly below Lock Mode. The `datetime-local` input now has a `max` constraint tied to the effective lock time
+  (derived from the active season's `firstFourLockAt` / `roundOf64LockAt`). Switching lock modes clears a cutoff that
+  would become invalid. A contextual hint below the input shows either the lock-close time (when no cutoff is set) or a
+  human-readable time difference (e.g., "Cutoff is 2 days, 4 hours before the lock"). An error state prevents submission
+  if the cutoff is set after the lock.
+
+---
+
 ## [0.7.0] — 2026-03-15
 
 ### Notifications & Polish

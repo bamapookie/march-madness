@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { auth, signIn, signOut } from "@/lib/auth";
+import { isAdmin } from "@/lib/admin";
 import { NotificationBell } from "@/components/nav-notifications";
 import { MobileNavDrawer } from "@/components/mobile-nav-drawer";
 
 export default async function Nav() {
   const session = await auth();
+  const adminUser = isAdmin(session?.user?.email);
 
   return (
     <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-950">
@@ -38,6 +40,14 @@ export default async function Nav() {
                 >
                   Competitions
                 </Link>
+                {adminUser && (
+                  <Link
+                    href="/admin"
+                    className="rounded border border-amber-400 px-2 py-0.5 text-xs font-medium text-amber-600 hover:bg-amber-50 dark:border-amber-500 dark:text-amber-400 dark:hover:bg-amber-950/30"
+                  >
+                    Admin
+                  </Link>
+                )}
               </div>
 
               {/* Notification bell (always visible when logged in) */}
@@ -72,6 +82,7 @@ export default async function Nav() {
               <MobileNavDrawer
                 userName={session.user.name ?? null}
                 userImage={session.user.image ?? null}
+                isAdmin={adminUser}
                 signOutAction={async () => {
                   "use server";
                   await signOut({ redirectTo: "/" });

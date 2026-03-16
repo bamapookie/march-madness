@@ -82,6 +82,23 @@ Selection Sunday is **March 15, 2026**. First Four begins **~March 19**. Round o
 - Loading states, error boundaries, empty states
 - Admin panel hardening — Railway DB status, last import timestamp
 
+### 0.7.1 — Post-Polish Fixes ✅ _complete_
+
+- Join competition server action now calls `createNotification` (join confirmation)
+- Removed misleading disabled checkbox from always-active Correct Winner row
+- All `console.log` calls in `import.ts` changed to `console.warn` (ESLint compliance)
+- Removed unnecessary `continue` at end of `discoverEspnGroupIds` loop (ESLint compliance)
+- `notifyScoresUpdated` skips when all scores are zero (no pre-tournament spam)
+- `notifyScoresUpdated` groups by competition, links directly to each competition's leaderboard
+- First Four points row greyed out and disabled when lock mode is "Before Round of 64"
+- Admin link added to desktop nav and mobile drawer for admin users
+- Join Cutoff field moved to Rules section (below Lock Mode); `max` constraint tied to effective lock time; time-diff
+  hint displayed; form submission blocked when cutoff exceeds lock
+
+### 0.7.2 — Import & Manual Override Fixes 🔲 _in progress_
+
+- Tasks to be added.
+
 ### 1.0.0 — Production Launch
 
 - Production deployment — Vercel + Railway
