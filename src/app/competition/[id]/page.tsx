@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Lock, Users, Trophy, BarChart2 } from "lucide-react";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
+import { createNotification } from "@/lib/notifications";
 import {
   getLockAtForCompetition,
   isCompetitionLocked,
@@ -222,6 +223,12 @@ export default async function CompetitionLobbyPage({ params }: Props) {
               action={async () => {
                 "use server";
                 await db.competitionMember.create({ data: { competitionId: id, userId } });
+                await createNotification(
+                  userId,
+                  "Joined competition",
+                  `You joined ${comp.name}. Submit a ranking list before the lock time.`,
+                  `/competition/${id}`
+                );
                 redirect(`/competition/${id}`);
               }}
             >

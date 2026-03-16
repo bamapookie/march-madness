@@ -31,7 +31,47 @@ const POINTS_ROWS: PointsRow[] = [
   { label: "Championship (Winner)", roundKey: null, bonusKey: "championship_winner" },
 ];
 
-export function CreateCompetitionForm() {
+// ─── Time-diff helpers ────────────────────────────────────────────────────────
+
+/** Converts a Date to the value format expected by <input type="datetime-local"> */
+function toDatetimeLocal(date: Date): string {
+  const y = date.getFullYear();
+  const mo = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  const h = String(date.getHours()).padStart(2, "0");
+  const m = String(date.getMinutes()).padStart(2, "0");
+  return `${y}-${mo}-${d}T${h}:${m}`;
+}
+
+/** Formats the difference between two dates as the two largest non-zero units. */
+function formatTimeDiff(cutoff: Date, lock: Date): string {
+  const ms = lock.getTime() - cutoff.getTime();
+  if (ms < 0) return "after lock";
+  const totalMins = Math.floor(ms / 60_000);
+  if (totalMins < 1) return "less than a minute";
+  const days = Math.floor(totalMins / 1440);
+  const hours = Math.floor((totalMins % 1440) / 60);
+  const mins = totalMins % 60;
+  const parts: string[] = [];
+  if (days > 0) parts.push(`${days} day${days !== 1 ? "s" : ""}`);
+  if (hours > 0) parts.push(`${hours} hour${hours !== 1 ? "s" : ""}`);
+  if (mins > 0 && parts.length < 2) parts.push(`${mins} minute${mins !== 1 ? "s" : ""}`);
+  return parts.slice(0, 2).join(", ");
+}
+
+// ─── Props ────────────────────────────────────────────────────────────────────
+
+interface CreateCompetitionFormProps {
+  /** ISO string of the active season's first_four_lock_at, or null if unknown. */
+  firstFourLockAt: string | null;
+  /** ISO string of the active season's round_of_64_lock_at, or null if unknown. */
+  roundOf64LockAt: string | null;
+}
+
+export function CreateCompetitionForm({
+  firstFourLockAt,
+  roundOf64LockAt,
+}: CreateCompetitionFormProps) {
   const router = useRouter();
   const defaults = getDefaultCompetitionSettings();
 
@@ -43,11 +83,65 @@ export function CreateCompetitionForm() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // ─── Derived lock-time values ─────────────────────────────────────────────
+
+  const effectiveLockDate: Date | null =
+    settings.lock_mode === "before_first_four"
+      ? firstFourLockAt
+        ? new Date(firstFourLockAt)
+        : null
+      : roundOf64LockAt
+        ? new Date(roundOf64LockAt)
+        : null;
+
+  const effectiveLockMax = effectiveLockDate ? toDatetimeLocal(effectiveLockDate) : undefined;
+
+  // ─── Cutoff hint ──────────────────────────────────────────────────────────
+
+  const cutoffHint: { text: string; variant: "info" | "error" } | null = (() => {
+    if (!effectiveLockDate) return null;
+    if (!joinCutoffAt) {
+      return {
+        text: `Lock closes at ${effectiveLockDate.toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}.`,
+        variant: "info",
+      };
+    }
+    const cutoff = new Date(joinCutoffAt);
+    const diff = formatTimeDiff(cutoff, effectiveLockDate);
+    if (diff === "after lock") {
+      return { text: "Cutoff must be before the lock time.", variant: "error" };
+    }
+    return {
+      text: `Cutoff is ${diff} before the lock.`,
+      variant: "info",
+    };
+  })();
+
+  const cutoffAfterLock =
+    !!joinCutoffAt && !!effectiveLockDate && new Date(joinCutoffAt) >= effectiveLockDate;
+
   function updateSettings<K extends keyof CompetitionSettings>(
     key: K,
     value: CompetitionSettings[K]
   ) {
-    setSettings((prev) => ({ ...prev, [key]: value }));
+    setSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      // When lock mode changes, clear cutoff if it would exceed the new lock time
+      if (key === "lock_mode") {
+        const newLock =
+          value === "before_first_four"
+            ? firstFourLockAt
+              ? new Date(firstFourLockAt)
+              : null
+            : roundOf64LockAt
+              ? new Date(roundOf64LockAt)
+              : null;
+        if (joinCutoffAt && newLock && new Date(joinCutoffAt) >= newLock) {
+          setJoinCutoffAt("");
+        }
+      }
+      return next;
+    });
   }
 
   function updateRoundPoints(key: keyof RoundPointMap, value: number) {
@@ -85,6 +179,10 @@ export function CreateCompetitionForm() {
     e.preventDefault();
     if (!name.trim()) {
       setError("Competition name is required.");
+      return;
+    }
+    if (cutoffAfterLock) {
+      setError("Join cutoff must be before the lock time.");
       return;
     }
     setSubmitting(true);
@@ -180,22 +278,6 @@ export function CreateCompetitionForm() {
             />
           </button>
         </div>
-
-        <div>
-          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Join Cutoff <span className="text-xs text-zinc-400">(optional)</span>
-          </label>
-          <p className="mb-1 text-xs text-zinc-500 dark:text-zinc-400">
-            After this time, new members cannot join and the competition becomes private. Must be
-            before the lock time.
-          </p>
-          <input
-            type="datetime-local"
-            value={joinCutoffAt}
-            onChange={(e) => setJoinCutoffAt(e.target.value)}
-            className="w-full rounded-md border border-zinc-300 px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
       </section>
 
       <hr className="border-zinc-200 dark:border-zinc-800" />
@@ -204,6 +286,7 @@ export function CreateCompetitionForm() {
       <section className="space-y-4">
         <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">Rules</h2>
 
+        {/* Lock Mode */}
         <div>
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Lock Mode</p>
           <div className="mt-2 space-y-2">
@@ -235,6 +318,40 @@ export function CreateCompetitionForm() {
           </div>
         </div>
 
+        {/* Join Cutoff — placed here so the lock mode context is visible */}
+        <div>
+          <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Join Cutoff <span className="text-xs text-zinc-400">(optional)</span>
+          </label>
+          <p className="mb-1 text-xs text-zinc-500 dark:text-zinc-400">
+            After this time, new members cannot join and the competition becomes private. Must be
+            before the lock time.
+          </p>
+          <input
+            type="datetime-local"
+            value={joinCutoffAt}
+            max={effectiveLockMax}
+            onChange={(e) => setJoinCutoffAt(e.target.value)}
+            className={`w-full rounded-md border px-3 py-2 text-sm shadow-sm focus:outline-none dark:bg-zinc-900 dark:text-zinc-50 ${
+              cutoffAfterLock
+                ? "border-red-400 focus:border-red-500 dark:border-red-600"
+                : "border-zinc-300 focus:border-zinc-500 dark:border-zinc-700"
+            }`}
+          />
+          {cutoffHint && (
+            <p
+              className={`mt-1 text-xs ${
+                cutoffHint.variant === "error"
+                  ? "text-red-600 dark:text-red-400"
+                  : "text-zinc-500 dark:text-zinc-400"
+              }`}
+            >
+              {cutoffHint.text}
+            </p>
+          )}
+        </div>
+
+        {/* Reseed Mode */}
         <div>
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Reseed Mode</p>
           <div className="mt-2 space-y-2">
@@ -266,6 +383,7 @@ export function CreateCompetitionForm() {
           </div>
         </div>
 
+        {/* Max entries */}
         <div>
           <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Max Entries per User
@@ -286,9 +404,8 @@ export function CreateCompetitionForm() {
         <div>
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Scoring Options</p>
           <div className="mt-2 space-y-2">
-            {/* Correct Winner — always enabled, no checkbox */}
+            {/* Correct Winner — always enabled; no checkbox needed */}
             <div className="flex items-start gap-3">
-              <input type="checkbox" checked disabled readOnly className="mt-0.5 opacity-60" />
               <span className="text-sm text-zinc-700 dark:text-zinc-300">
                 <strong>Correct Winner</strong> — points for each correctly predicted game winner
                 (always active)
@@ -358,73 +475,95 @@ export function CreateCompetitionForm() {
               </tr>
             </thead>
             <tbody>
-              {POINTS_ROWS.map((row) => (
-                <tr key={row.label} className="border-b border-zinc-100 dark:border-zinc-900">
-                  <td className="py-1.5 text-zinc-700 dark:text-zinc-300">{row.label}</td>
+              {POINTS_ROWS.map((row) => {
+                const isFirstFourDisabled =
+                  row.label === "First Four" && settings.lock_mode === "before_round_of_64";
 
-                  {/* Correct Winner */}
-                  <td className="py-1.5 pr-2 text-right">
-                    {row.roundKey ? (
-                      <input
-                        type="number"
-                        min={0}
-                        value={settings.correct_winner_points[row.roundKey]}
-                        onChange={(e) =>
-                          updateCorrectWinnerPoints(
-                            row.roundKey!,
-                            Math.max(0, parseInt(e.target.value, 10) || 0)
-                          )
-                        }
-                        className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                      />
-                    ) : (
-                      <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
-                    )}
-                  </td>
+                return (
+                  <tr
+                    key={row.label}
+                    className={`border-b border-zinc-100 dark:border-zinc-900 ${
+                      isFirstFourDisabled ? "opacity-40" : ""
+                    }`}
+                    title={
+                      isFirstFourDisabled
+                        ? "First Four points are not awarded in Before Round of 64 mode."
+                        : undefined
+                    }
+                  >
+                    <td
+                      className={`py-1.5 text-zinc-700 dark:text-zinc-300 ${
+                        isFirstFourDisabled ? "line-through" : ""
+                      }`}
+                    >
+                      {row.label}
+                    </td>
 
-                  {/* Round Advancement */}
-                  <td className="py-1.5 pr-2 text-right">
-                    {row.roundKey ? (
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={!roundAdvancementEnabled}
-                        value={settings.round_points[row.roundKey]}
-                        onChange={(e) =>
-                          updateRoundPoints(
-                            row.roundKey!,
-                            Math.max(0, parseInt(e.target.value, 10) || 0)
-                          )
-                        }
-                        className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                      />
-                    ) : (
-                      <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
-                    )}
-                  </td>
+                    {/* Correct Winner */}
+                    <td className="py-1.5 pr-2 text-right">
+                      {row.roundKey ? (
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={isFirstFourDisabled}
+                          value={settings.correct_winner_points[row.roundKey]}
+                          onChange={(e) =>
+                            updateCorrectWinnerPoints(
+                              row.roundKey!,
+                              Math.max(0, parseInt(e.target.value, 10) || 0)
+                            )
+                          }
+                          className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                        />
+                      ) : (
+                        <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                      )}
+                    </td>
 
-                  {/* Seeding Bonus */}
-                  <td className="py-1.5 text-right">
-                    {row.bonusKey ? (
-                      <input
-                        type="number"
-                        min={0}
-                        disabled={!settings.seeding_bonus_enabled}
-                        value={settings.seeding_bonus_points[row.bonusKey]}
-                        onChange={(e) =>
-                          updateSeedingBonusPoints(
-                            row.bonusKey!,
-                            Math.max(0, parseInt(e.target.value, 10) || 0)
-                          )
-                        }
-                        className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                      />
-                    ) : (
-                      <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
+                    {/* Round Advancement */}
+                    <td className="py-1.5 pr-2 text-right">
+                      {row.roundKey ? (
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={!roundAdvancementEnabled || isFirstFourDisabled}
+                          value={settings.round_points[row.roundKey]}
+                          onChange={(e) =>
+                            updateRoundPoints(
+                              row.roundKey!,
+                              Math.max(0, parseInt(e.target.value, 10) || 0)
+                            )
+                          }
+                          className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                        />
+                      ) : (
+                        <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                      )}
+                    </td>
+
+                    {/* Seeding Bonus */}
+                    <td className="py-1.5 text-right">
+                      {row.bonusKey ? (
+                        <input
+                          type="number"
+                          min={0}
+                          disabled={!settings.seeding_bonus_enabled || isFirstFourDisabled}
+                          value={settings.seeding_bonus_points[row.bonusKey]}
+                          onChange={(e) =>
+                            updateSeedingBonusPoints(
+                              row.bonusKey!,
+                              Math.max(0, parseInt(e.target.value, 10) || 0)
+                            )
+                          }
+                          className="w-16 rounded border border-zinc-300 px-2 py-0.5 text-right text-sm disabled:cursor-not-allowed disabled:opacity-40 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                        />
+                      ) : (
+                        <span className="text-xs text-zinc-300 dark:text-zinc-700">—</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
@@ -433,7 +572,7 @@ export function CreateCompetitionForm() {
       <div className="pt-2">
         <button
           type="submit"
-          disabled={submitting}
+          disabled={submitting || cutoffAfterLock}
           className="rounded-md bg-zinc-900 px-6 py-2.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           {submitting ? "Creating…" : "Create Competition"}
